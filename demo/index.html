@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Purify</title>
+  <link rel="stylesheet" href="css/theme.css">
+  <script defer src="js/libs/alpine.min.js"></script>
+  <script src="js/libs/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- Custom titlebar -->
+<div class="win-titlebar pywebview-drag-region">
+  <span class="win-titlebar-name">Purify</span>
+  <div class="win-controls">
+    <button class="wc-btn wc-hide"  onclick="window.pywebview&&pywebview.api.hide()"     title="Свернуть в трей">⊟</button>
+    <button class="wc-btn wc-min"   onclick="window.pywebview&&pywebview.api.minimize()" title="Свернуть">⎯</button>
+    <button class="wc-btn wc-close" onclick="window.pywebview&&pywebview.api.close()"    title="Закрыть">✕</button>
+  </div>
+</div>
+
+<!-- Aurora & Grain -->
+<div class="aurora-bg"><div class="aurora-mid"></div></div>
+<div class="grain"></div>
+
+<!-- Voice activity border ring — driven at 60fps from JS _updateVoiceRing() -->
+<div class="voice-pulse-ring" id="voice-ring"></div>
+
+<!-- ════ ONBOARDING ════ -->
+<div id="onboarding-overlay" class="onboarding-overlay hidden"
+     x-data="onboardingApp()"
+     x-init="init()">
+
+  <div class="ob-card">
+    <div class="ob-logo">
+      <div class="logo-orb">P</div>
+      <span class="logo-name">Purify</span>
+    </div>
+
+    <!-- Step track -->
+    <div class="step-track">
+      <div class="step-node" :class="{ active: step===1, done: step>1 }" x-text="step>1?'✓':'1'"></div>
+      <div class="step-line" :class="{ done: step>1 }"></div>
+      <div class="step-node" :class="{ active: step===2, done: step>2 }" x-text="step>2?'✓':'2'"></div>
+      <div class="step-line" :class="{ done: step>2 }"></div>
+      <div class="step-node" :class="{ active: step===3, done: step>3 }" x-text="step>3?'✓':'3'"></div>
+      <div class="step-line" :class="{ done: step>3 }"></div>
+      <div class="step-node" :class="{ active: step===4, done: step>4 }" x-text="step>4?'✓':'4'"></div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="ob-step" :class="{ active: step === 1 }">
+      <div class="ob-step-title">Telegram токен</div>
+      <div class="ob-step-desc">
+        Создайте бота через <span class="text-accent fw-6">@BotFather</span> и вставьте полученный токен.<br>
+        <span style="color:var(--text-muted);font-size:12px">Можно пропустить — настроите позже в Настройках.</span>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <div class="input-wrap">
+          <input x-model="token" :type="showToken ? 'text' : 'password'" class="input" placeholder="1234567890:ABCdef...">
+          <button class="input-eye" @click="showToken = !showToken" :aria-label="showToken ? 'Скрыть токен' : 'Показать токен'">
+            <svg x-show="showToken" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            <svg x-show="!showToken" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <button class="btn btn-secondary btn-sm" @click="verifyToken()" :disabled="verifying">
+          <span x-show="verifying" class="spinner" style="width:12px;height:12px"></span>
+          <span x-text="verifying ? 'Проверка...' : 'Проверить'"></span>
+        </button>
+      </div>
+      <div x-show="verifyMsg" x-transition class="ob-verify" :class="verifyOk ? 'success' : 'error'" x-text="verifyMsg"></div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="ob-step" :class="{ active: step === 2 }">
+      <div class="ob-step-title">Ваш Chat ID</div>
+      <div class="ob-step-desc">
+        Узнайте ID через <span class="text-accent fw-6">@userinfobot</span> или отправьте /start своему боту.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chat ID</label>
+        <div class="input-group">
+          <input x-model="chatId" type="text" class="input" placeholder="123456789">
+          <button class="btn btn-secondary" @click="testMessage()">Тест</button>
+        </div>
+        <div class="form-hint">После нажатия «Тест» бот отправит вам сообщение.</div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="ob-step" :class="{ active: step === 3 }">
+      <div class="ob-step-title">Аналитика</div>
+      <div class="ob-step-desc">
+        Помогите улучшить Purify — анонимные данные об использовании.<br>Никаких токенов, текстов команд и личных данных.
+      </div>
+      <div class="consent-opt" :class="{ selected: analytics === 'yes' }" @click="analytics = 'yes'">
+        <div class="consent-opt-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div>
+          <div class="consent-opt-title">Разрешить</div>
+          <div class="consent-opt-desc">Категории команд, метрики производительности. Полностью анонимно.</div>
+        </div>
+      </div>
+      <div class="consent-opt" :class="{ selected: analytics === 'no' }" @click="analytics = 'no'">
+        <div class="consent-opt-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div>
+          <div class="consent-opt-title">Отказаться</div>
+          <div class="consent-opt-desc">Без аналитики. Некоторые баги могут остаться незамеченными.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="ob-step" :class="{ active: step === 4 }">
+      <div class="ob-step-title">Автозапуск</div>
+      <div class="ob-step-desc">Запускать Purify вместе с Windows?</div>
+      <div class="consent-opt" :class="{ selected: autostart === true }" @click="autostart = true">
+        <div class="consent-opt-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div>
+          <div class="consent-opt-title">Да, автозапуск</div>
+          <div class="consent-opt-desc">Purify будет работать в фоне сразу после входа в Windows.</div>
+        </div>
+      </div>
+      <div class="consent-opt" :class="{ selected: autostart === false }" @click="autostart = false">
+        <div class="consent-opt-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        </div>
+        <div>
+          <div class="consent-opt-title">Нет, запускать вручную</div>
+          <div class="consent-opt-desc">Запуск только через ярлык или меню Пуск.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav buttons -->
+    <div class="ob-nav">
+      <button class="btn btn-ghost" x-show="step > 1" @click="step--">← Назад</button>
+      <div x-show="step === 1"></div>
+      <button class="btn btn-ghost" x-show="step === 1 || step === 2" @click="skip()" style="margin-right:4px">Пропустить</button>
+      <button class="btn btn-gradient" @click="next()">
+        <span x-text="step < 4 ? 'Продолжить →' : 'Начать работу'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MAIN APP ════ -->
+<div id="app" class="hidden" x-data="appRoot()" x-init="init()" @keydown.ctrl.k.window.prevent="cmdOpen = true" @keydown.escape.window="cmdOpen = false">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+    <div class="sidebar-logo">
+      <div class="logo-orb">P</div>
+      <div class="logo-text-group">
+        <div class="logo-name">Purify</div>
+        <div class="logo-tagline">AI Assistant</div>
+      </div>
+      <button class="sidebar-collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed" :title="sidebarCollapsed ? 'Развернуть' : 'Свернуть'" :aria-label="sidebarCollapsed ? 'Развернуть боковое меню' : 'Свернуть боковое меню'">
+        <span x-text="sidebarCollapsed ? '›' : '‹'"></span>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Главное</div>
+
+      <button class="nav-item" :class="{ active: page === 'dashboard' }" @click="navigate('dashboard')" title="Дашборд" aria-label="Дашборд">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <span class="nav-label">Дашборд</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: page === 'chat' }" @click="navigate('chat')" title="Чат" aria-label="Чат">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <span class="nav-label">Чат</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: page === 'bot' }" @click="navigate('bot')" title="Telegram бот" aria-label="Telegram бот">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+          </svg>
+        </div>
+        <span class="nav-label">Telegram</span>
+        <span class="nav-badge" x-show="botOnline" style="font-size:8px;padding:1px 5px;">●</span>
+      </button>
+
+      <div class="nav-section-label" style="margin-top:6px">Управление</div>
+
+      <button class="nav-item" :class="{ active: page === 'programs' }" @click="navigate('programs')" title="Программы" aria-label="Программы">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <span class="nav-label">Программы</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: page === 'scripts' }" @click="navigate('scripts')" title="Сценарии" aria-label="Сценарии">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <span class="nav-label">Сценарии</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: page === 'voice' }" @click="navigate('voice')" title="Голос" aria-label="Голос">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+        </div>
+        <span class="nav-label">Голос</span>
+      </button>
+
+      <div class="nav-section-label" style="margin-top:6px">Система</div>
+
+      <button class="nav-item" :class="{ active: page === 'tools' }" @click="navigate('tools')" title="Обслуживание" aria-label="Обслуживание">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <span class="nav-label">Обслуживание</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: page === 'logs' }" @click="navigate('logs')" title="Логи" aria-label="Логи">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+        </div>
+        <span class="nav-label">Логи</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: page === 'settings' }" @click="navigate('settings')" title="Настройки" aria-label="Настройки">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </div>
+        <span class="nav-label">Настройки</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-status-row">
+        <div class="status-dot" :class="botOnline ? 'online pulse' : 'offline'"></div>
+        <span class="sidebar-status-text" x-text="botOnline ? 'Бот онлайн' : 'Бот оффлайн'" aria-live="polite" role="status"></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="page-title" x-text="pageTitle"></span>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-cmd" @click="cmdOpen = true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Поиск
+          <kbd>Ctrl+K</kbd>
+        </button>
+        <div class="api-status" :class="apiDisconnected ? 'disconnected' : 'connected'" x-show="page === 'dashboard' || apiDisconnected">
+          <span x-text="apiDisconnected ? '⚠ Нет связи' : '● Подключено'"></span>
+        </div>
+        <div class="license-pill" :class="{ paid: license.plan === 'paid' }">
+          <span x-text="license.plan === 'paid' ? '✦ Pro' : `Trial · ${license.days_left}д`"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: DASHBOARD ── -->
+    <div class="page-container page" id="page-dashboard"
+         :class="{ active: page === 'dashboard' }"
+         x-data="dashboardPage()" x-init="init()">
+
+      <!-- Dashboard header -->
+      <div class="dash-header">
+        <div class="dash-actions">
+          <button class="btn btn-sm btn-ghost" x-show="editMode" @click="showCatalog = true" style="display:none;gap:4px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Виджет
+          </button>
+          <button class="btn btn-sm" :class="editMode ? 'btn-gradient' : 'btn-ghost'" @click="toggleEdit()">
+            <span x-text="editMode ? '✓ Готово' : '⊞ Настроить'"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Widget Grid -->
+      <div class="widget-grid" :class="editMode && 'widget-grid-edit'">
+        <template x-for="widget in layout" :key="widget.id">
+          <div class="widget-cell card"
+               :class="['ws-'+widget.w, 'hs-'+widget.h, editMode && 'editing', swapSource === widget.id && 'swap-sel', _swappingIds.includes(widget.id) && 'swapping', widget.type === 'media' && 'cell-media']"
+               @click="editMode && handleSwapClick(widget.id)">
+
+            <!-- Edit overlay (redesigned: no W/H buttons) -->
+            <div class="widget-edit-overlay" x-show="editMode" :class="swapSource && swapSource !== widget.id && 'swap-target'">
+              <button class="widget-del-btn" @click.stop="removeWidget(widget.id)" :aria-label="'Удалить виджет ' + (catalogMap[widget.type]||{}).label">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+              <div class="widget-edit-center">
+                <div class="widget-edit-ico" x-text="(catalogMap[widget.type]||{}).icon"></div>
+                <div class="widget-edit-name" x-text="(catalogMap[widget.type]||{}).label"></div>
+              </div>
+              <div class="widget-edit-footer">
+                <span class="wec-size-badge" x-text="widget.w+'×'+widget.h"></span>
+                <span class="wec-swap-hint" x-show="swapSource && swapSource !== widget.id">← нажмите для замены</span>
+              </div>
+              <!-- Resize corner in edit mode -->
+              <div class="widget-resize-handle rh-edit" :class="{ 'rh-active': _resizing?.id === widget.id }"
+                   @mousedown.prevent.stop="startResize($event, widget.id)">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M11 1L1 11M11 5L5 11M11 9L9 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- ═══ CLOCK ═══ -->
+            <div class="w-clock" x-show="widget.type==='clock' && !editMode" :class="'wc-'+widget.w+'x'+widget.h">
+              <div class="clock-label">Время</div>
+              <div class="clock-time" x-text="clockTime"></div>
+              <div class="clock-extra">
+                <span class="clock-day" x-text="clockDay"></span>
+                <span class="clock-date" x-text="clockDate"></span>
+              </div>
+              <div class="clock-cal" x-show="widget.h >= 2">
+                <div class="cal-nav">
+                  <button class="cal-nav-btn" @click="calPrev()">‹</button>
+                  <span class="cal-month" x-text="calMonthName" @click="calToday()"></span>
+                  <button class="cal-nav-btn" @click="calNext()">›</button>
+                </div>
+                <div class="cal-grid">
+                  <template x-for="dn in ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']"><span class="cal-hd" x-text="dn"></span></template>
+                  <template x-for="(c, ci) in calDays" :key="ci"><span class="cal-d" :class="c.cls" x-text="c.d"></span></template>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ CPU ═══ -->
+            <div class="w-stat" x-show="widget.type==='cpu' && !editMode">
+              <div class="w-stat-row">
+                <div>
+                  <div class="w-stat-lbl">Процессор</div>
+                  <div class="w-stat-val" :class="stats.cpu>80?'val-red':stats.cpu>60?'val-yel':''" x-text="stats.cpu+'%'"></div>
+                </div>
+                <div class="w-stat-ico purple">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+                </div>
+              </div>
+              <div class="w-bar-track"><div class="w-bar-fill" :style="`width:${stats.cpu}%;background:${stats.cpu>80?'var(--red)':stats.cpu>60?'var(--yellow)':'var(--accent)'}`"></div></div>
+              <svg class="w-spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline :points="cpuSparkPts" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.8"/></svg>
+            </div>
+
+            <!-- ═══ RAM ═══ -->
+            <div class="w-stat" x-show="widget.type==='ram' && !editMode">
+              <div class="w-stat-row">
+                <div>
+                  <div class="w-stat-lbl">Память</div>
+                  <div class="w-stat-val" x-text="stats.ram_used+' GB'"></div>
+                </div>
+                <div class="w-stat-ico blue">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2v6"/><path d="M18 2v6"/><rect x="2" y="8" width="20" height="12" rx="2"/><path d="M12 8v12"/><path d="M6 14h.01"/><path d="M18 14h.01"/></svg>
+                </div>
+              </div>
+              <div class="w-bar-track"><div class="w-bar-fill blue" :style="`width:${stats.ramPct}%`"></div></div>
+              <div class="w-stat-sub" x-text="`${stats.ram_used} / ${stats.ram_total} GB`"></div>
+              <svg class="w-spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline :points="ramSparkPts" fill="none" stroke="var(--blue)" stroke-width="1.5" opacity="0.8"/></svg>
+              <div class="w-action-row">
+                <button class="w-action-pill" @click="flushRam()" :disabled="ramFlushing" :class="{ loading: ramFlushing }">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  <span x-text="ramFlushing ? 'Очистка...' : 'Сбросить RAM'"></span>
+                </button>
+                <span class="w-action-result" x-show="ramFlushResult" x-text="ramFlushResult"></span>
+              </div>
+            </div>
+
+            <!-- ═══ DISK ═══ -->
+            <div class="w-stat" x-show="widget.type==='disk' && !editMode">
+              <div class="w-stat-row">
+                <div>
+                  <div class="w-stat-lbl">Диск C: — Свободно</div>
+                  <div class="w-stat-val" x-text="stats.disk_free+' GB'"></div>
+                </div>
+                <div class="w-stat-ico yellow">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                </div>
+              </div>
+              <div class="w-bar-track"><div class="w-bar-fill yellow" :style="`width:${stats.diskPct}%`"></div></div>
+              <div class="w-stat-sub" x-text="`Занято ${stats.disk_used} из ${stats.disk_total} GB`"></div>
+              <div class="w-action-row">
+                <button class="w-action-pill" @click="cleanDisk()" :disabled="diskCleaning" :class="{ loading: diskCleaning }">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <span x-text="diskCleaning ? 'Очистка...' : 'Очистить temp'"></span>
+                </button>
+                <span class="w-action-result" x-show="diskCleanResult" x-text="diskCleanResult"></span>
+              </div>
+            </div>
+
+            <!-- ═══ VOLUME ═══ -->
+            <div class="w-volume" x-show="widget.type==='volume' && !editMode">
+              <div class="w-stat-row">
+                <div>
+                  <div class="w-stat-lbl">Громкость</div>
+                  <div class="w-stat-val green" x-text="stats.volume+'%'"></div>
+                </div>
+                <div class="w-stat-ico green">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                </div>
+              </div>
+              <div class="w-vol-body">
+                <input type="range" class="w-vol-slider" min="0" max="100" :value="stats.volume" @input="setVolume($event.target.value)">
+                <div class="w-vol-ticks">
+                  <span>0</span><span>50</span><span>100</span>
+                </div>
+              </div>
+              <button class="w-mute-btn" :class="{'mute-active': stats.muted}" @click="toggleMute()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                <span x-text="stats.muted ? 'Звук выключен' : 'Выкл звук'"></span>
+              </button>
+            </div>
+
+            <!-- ═══ BOT ═══ -->
+            <div class="w-bot" x-show="widget.type==='bot' && !editMode">
+              <div class="w-bot-header">
+                <div class="w-bot-avatar" @click="openBot()" :title="botInfo.username ? '@'+botInfo.username : ''">
+                  <img x-show="botInfo.avatar" :src="botInfo.avatar" class="w-bot-avatar-img" alt="avatar">
+                  <span x-show="!botInfo.avatar" class="w-bot-avatar-placeholder">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M9 11V7a3 3 0 0 1 6 0v4"/><circle cx="9" cy="16" r="1" fill="currentColor"/><circle cx="15" cy="16" r="1" fill="currentColor"/><line x1="12" y1="3" x2="12" y2="5"/></svg>
+                  </span>
+                  <div class="w-bot-status-dot" :class="stats.bot_online ? 'dot-on' : 'dot-off'"></div>
+                </div>
+                <div class="w-bot-info">
+                  <div class="w-bot-name" x-text="botInfo.name || 'Telegram Bot'"></div>
+                  <div class="w-bot-username" x-show="botInfo.username" x-text="'@'+botInfo.username" @click="openBot()" style="cursor:pointer"></div>
+                  <div class="w-bot-state" :class="stats.bot_online ? 'state-on' : 'state-off'" x-text="stats.bot_online ? 'онлайн' : 'оффлайн'"></div>
+                </div>
+              </div>
+              <!-- Stats — only at h≥2 to fill space -->
+              <div class="w-bot-divider" x-show="widget.h >= 2"></div>
+              <div class="w-bot-stats" x-show="widget.h >= 2">
+                <div class="w-bot-stat-row">
+                  <div class="w-bot-stat">
+                    <span class="w-bot-stat-n" x-text="usageStats.commands_today || 0"></span>
+                    <span class="w-bot-stat-l">команд сегодня</span>
+                  </div>
+                  <div class="w-bot-stat" x-show="stats.uptime">
+                    <span class="w-bot-stat-n" x-text="stats.uptime || '—'"></span>
+                    <span class="w-bot-stat-l">аптайм</span>
+                  </div>
+                </div>
+              </div>
+              <button class="w-bot-btn"
+                      :class="stats.bot_online ? 'bot-btn-stop' : 'bot-btn-start'"
+                      @click="toggleBot()" x-text="stats.bot_online ? 'Остановить' : 'Запустить'"></button>
+            </div>
+
+            <!-- ═══ VOICE ═══ -->
+            <div class="w-voice" x-show="widget.type==='voice' && !editMode"
+                 :class="{ 'wv-enabled': voice.micEnabled, 'wv-recording': voice.hotkeyHeld }">
+
+              <!-- Ambient glow (only when active) -->
+              <div class="wv-glow" :class="{ active: voice.micEnabled && voice.armed }"></div>
+
+              <!-- Header: label + primary OS mic toggle -->
+              <div class="wv-header">
+                <div class="wv-label">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/>
+                  </svg>
+                  <span>Голос</span>
+                </div>
+                <label class="toggle toggle-xs" aria-label="Включить/выключить микрофон" @click.stop>
+                  <input type="checkbox" :checked="voice.micEnabled" @change="toggleMicEnabled()">
+                  <div class="toggle-track"></div>
+                </label>
+              </div>
+
+              <!-- Visualization zone -->
+              <div class="wv-viz-zone">
+                <!-- Frequency bars canvas — only when mic enabled -->
+                <canvas class="wv-canvas" x-show="voice.micEnabled"></canvas>
+                <!-- Muted state icon -->
+                <div class="wv-muted-overlay" x-show="!voice.micEnabled">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+                    <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/>
+                  </svg>
+                  <span class="wv-muted-label">Мик выключен</span>
+                </div>
+              </div>
+
+              <!-- Status row -->
+              <div class="wv-status">
+                <span x-show="!voice.micEnabled" class="wv-status-off">ПО не слышит звук</span>
+                <span x-show="voice.micEnabled && voice.hotkeyHeld" class="wv-status-rec">Запись...</span>
+                <span x-show="voice.micEnabled && !voice.hotkeyHeld && voice.armed" class="wv-status-on">Слушает «Purify»</span>
+                <span x-show="voice.micEnabled && !voice.hotkeyHeld && !voice.armed" class="wv-status-ptt">
+                  Зажмите <kbd class="hotkey-key" x-text="voice.hotkey">Ctrl</kbd>
+                </span>
+              </div>
+
+              <!-- Wake word toggle row (wide/tall widget) -->
+              <div class="wv-mode-row" x-show="voice.micEnabled && (widget.w >= 2 || widget.h >= 2)">
+                <span class="wv-hotkey-label">Wake word</span>
+                <label class="toggle toggle-xs" @click.stop>
+                  <input type="checkbox" :checked="voice.armed" @change="toggleVoiceArmed()">
+                  <div class="toggle-track"></div>
+                </label>
+              </div>
+
+            </div>
+
+            <!-- ═══ MEDIA PLAYER ═══ -->
+            <div class="w-media" x-show="widget.type==='media' && !editMode" :class="'media-'+widget.w+'x'+widget.h">
+              <!-- Dynamic background -->
+              <div class="media-bg">
+                <div class="media-bg-art" :class="{ 'art-loaded': !!media.art }" :style="media.art ? `background-image:url('${media.art}')` : ''"></div>
+                <div class="media-bg-glow" :class="[media.status==='playing' && 'active', media.art && 'with-art']"></div>
+                <div class="media-bg-overlay"></div>
+              </div>
+              <!-- Content -->
+              <div class="media-content">
+                <!-- Album art (shown when h>=2 OR w>=3) -->
+                <div class="media-art-zone" x-show="widget.h>=2 || widget.w>=3">
+                  <div x-show="media.art" class="media-art-frame">
+                    <img class="media-art-img" :src="media.art || ''" alt="album art">
+                  </div>
+                  <div x-show="!media.art" class="media-art-orb" :class="media.status==='playing' && 'spinning'">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" style="position:relative;z-index:2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                  </div>
+                </div>
+                <!-- Footer: info + controls -->
+                <div class="media-footer">
+                  <div class="media-meta">
+                    <div class="media-track-name" x-text="media.track || 'Ничего не играет'"></div>
+                    <div class="media-artist-name" x-text="media.artist || '—'"></div>
+                  </div>
+                  <div class="media-prog" x-show="widget.h>=2 || widget.w>=4">
+                    <div class="w-bar-track" style="margin:0 0 4px; height:3px;">
+                      <div class="w-bar-fill media-bar" style="width:0%"></div>
+                    </div>
+                    <div class="media-times">
+                      <span class="media-pos-display">0:00</span>
+                      <span x-text="fmtTime(media.duration)"></span>
+                    </div>
+                  </div>
+                  <div class="media-controls">
+                    <button class="media-btn-ctrl" @click.stop="API.mediaPrev()" title="Предыдущий" aria-label="Предыдущий трек">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 20L9 12l10-8v16zM5 4h2v16H5z"/></svg>
+                    </button>
+                    <button class="media-btn-ctrl play-btn" @click.stop="toggleMedia()" :aria-label="media.status==='playing' ? 'Пауза' : 'Воспроизвести'">
+                      <svg x-show="media.status!=='playing'" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                      <svg x-show="media.status==='playing'" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                    <button class="media-btn-ctrl" @click.stop="API.mediaNext()" title="Следующий" aria-label="Следующий трек">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4l10 8-10 8V4zm14 0h2v16h-2z"/></svg>
+                    </button>
+                    <div class="media-vol-row" x-show="widget.w>=2">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                      <input type="range" class="w-vol-slider mini" min="0" max="100" :value="stats.volume" @input="setVolume($event.target.value)">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ WEATHER ═══ -->
+            <div class="w-weather" x-show="widget.type==='weather' && !editMode"
+                 x-data="{
+                   slide: 0, prev: -1, dir: 1, auto: null, dragging: false, startX: 0, dx: 0,
+                   go(n) {
+                     const len = (weather.forecast||[]).length; if(!len) return;
+                     const next = ((n % len) + len) % len;
+                     if(next === this.slide) return;
+                     this.dir = next > this.slide ? 1 : -1;
+                     this.prev = this.slide; this.slide = next;
+                   },
+                   resetAuto() {
+                     clearInterval(this.auto);
+                     this.auto = setInterval(() => { if(!this.dragging) this.go(this.slide+1) }, 5000);
+                   }
+                 }"
+                 x-init="auto = setInterval(() => { if(!dragging) go(slide+1) }, 5000)"
+                 x-effect="if(!(weather.forecast||[]).length) slide = 0"
+                 @mousedown.prevent="dragging=true; startX=$event.clientX; dx=0"
+                 @mousemove.window="if(dragging) dx=$event.clientX - startX"
+                 @mouseup.window="if(dragging){ dragging=false; if(Math.abs(dx)>40){ dir=dx<0?1:-1; go(slide+(dx<0?1:-1)); resetAuto() } dx=0 }"
+                 @touchstart="dragging=true; startX=$event.touches[0].clientX; dx=0"
+                 @touchmove.prevent="if(dragging) dx=$event.touches[0].clientX - startX"
+                 @touchend="if(dragging){ dragging=false; if(Math.abs(dx)>40){ dir=dx<0?1:-1; go(slide+(dx<0?1:-1)); resetAuto() } dx=0 }">
+              <div class="weather-top">
+                <div class="w-stat-lbl" x-text="weather.city||'Погода'"></div>
+                <div class="weather-dots">
+                  <template x-for="(day, i) in (weather.forecast||[])" :key="i">
+                    <button class="weather-dot" :class="{ active: slide===i }" @click="go(i); resetAuto()"></button>
+                  </template>
+                </div>
+              </div>
+              <div class="weather-carousel"
+                   x-effect="slide; $el.classList.remove('ws-anim-in'); void $el.offsetWidth; $el.classList.add('ws-anim-in')"
+                   :style="'--ws-dir:' + dir">
+                <div class="weather-slide" x-show="(weather.forecast||[]).length">
+                  <div class="weather-slide-icon" x-text="(weather.forecast||[])[slide]?.icon"></div>
+                  <div class="weather-slide-temp" x-text="((weather.forecast||[])[slide]?.temp ?? '—')+'°'"></div>
+                  <div class="weather-slide-name" x-text="(weather.forecast||[])[slide]?.name"></div>
+                  <div class="weather-slide-desc" x-text="(weather.forecast||[])[slide]?.desc"></div>
+                  <div class="weather-slide-range">
+                    <span x-text="(weather.forecast||[])[slide]?.min+'°'"></span>
+                    <span class="weather-range-bar"></span>
+                    <span x-text="(weather.forecast||[])[slide]?.max+'°'"></span>
+                  </div>
+                  <div class="weather-slide-extra" x-show="slide===0 && weather.humidity">
+                    <span>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                      <span x-text="weather.humidity+'%'"></span>
+                    </span>
+                    <span>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2"/></svg>
+                      <span x-text="weather.wind+' м/с'"></span>
+                    </span>
+                    <span x-show="weather.feels_like!==null">
+                      <span x-text="'Ощущ. '+weather.feels_like+'°'"></span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ CURRENCY ═══ -->
+            <div class="w-currency" x-show="widget.type==='currency' && !editMode">
+              <div class="currency-hdr">
+                <span class="w-stat-lbl">Курсы</span>
+                <button class="cur-gear" @click.stop="curSettingsOpen=!curSettingsOpen" aria-label="Настроить">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                </button>
+              </div>
+              <!-- settings -->
+              <div class="cur-settings" x-show="curSettingsOpen" @click.outside="curSettingsOpen=false" x-transition style="display:none">
+                <div class="cur-settings-hint" x-text="'Выбрано ' + curSelected.length + ' из 5'"></div>
+                <div class="cur-settings-label">Валюты</div>
+                <div class="cur-opts-grid">
+                  <template x-for="pair in curAllPairs.filter(p=>p.type==='fiat')" :key="pair.code">
+                    <button class="cur-chip" :class="{ active: curSelected.includes(pair.code), disabled: !curSelected.includes(pair.code) && curSelected.length>=5 }" @click="toggleCurPair(pair.code)" x-text="pair.code"></button>
+                  </template>
+                </div>
+                <div class="cur-settings-label">Крипто</div>
+                <div class="cur-opts-grid">
+                  <template x-for="pair in curAllPairs.filter(p=>p.type==='crypto')" :key="pair.code">
+                    <button class="cur-chip" :class="{ active: curSelected.includes(pair.code), disabled: !curSelected.includes(pair.code) && curSelected.length>=5 }" @click="toggleCurPair(pair.code)" x-text="pair.code"></button>
+                  </template>
+                </div>
+                <div class="cur-settings-label">Цена крипто</div>
+                <div class="cur-opts-grid">
+                  <button class="cur-chip" :class="{ active: curCryptoUnit==='rub' }" @click="curCryptoUnit='rub'; try{localStorage.setItem('puri_cur_unit',curCryptoUnit)}catch{}; fetchCurrency()">₽</button>
+                  <button class="cur-chip" :class="{ active: curCryptoUnit==='usd' }" @click="curCryptoUnit='usd'; try{localStorage.setItem('puri_cur_unit',curCryptoUnit)}catch{}; fetchCurrency()">$</button>
+                </div>
+              </div>
+              <!-- rates -->
+              <div class="cur-rates" x-show="!curSettingsOpen">
+                <template x-for="rate in currency.rates" :key="rate.code">
+                  <div class="cur-rate-row">
+                    <span class="cur-rate-code" x-text="rate.code"></span>
+                    <span class="cur-rate-val" x-text="rate.value + ' ' + rate.unit"></span>
+                  </div>
+                </template>
+                <div class="cur-empty" x-show="!currency.rates.length">Загрузка...</div>
+              </div>
+            </div>
+
+            <!-- ═══ GPU ═══ -->
+            <div class="w-stat" x-show="widget.type==='gpu' && !editMode">
+              <div class="w-stat-row">
+                <div>
+                  <div class="w-stat-lbl" x-text="gpu.name || 'GPU'"></div>
+                  <div class="w-stat-val" :class="(gpu.load||0)>80?'val-red':(gpu.load||0)>60?'val-yel':''" x-text="gpu.load!=null ? gpu.load+'%' : '—'"></div>
+                </div>
+                <div class="w-stat-ico green">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 6V4"/><path d="M10 6V4"/><path d="M14 6V4"/><path d="M18 6V4"/><rect x="6" y="10" width="12" height="4" rx="1"/></svg>
+                </div>
+              </div>
+              <div class="w-bar-track"><div class="w-bar-fill green" :style="`width:${gpu.load||0}%`"></div></div>
+              <div class="w-stat-sub" x-text="gpu.temp!=null ? gpu.temp+'°C · VRAM '+(gpu.vram_used_mb||'?')+'/'+(gpu.vram_mb||'?')+' MB' : ''"></div>
+              <svg class="w-spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline :points="gpuSparkPts" fill="none" stroke="var(--green)" stroke-width="1.5" opacity="0.8"/></svg>
+            </div>
+
+            <!-- ═══ BATTERY ═══ -->
+            <div class="w-bat" x-show="widget.type==='battery' && !editMode">
+              <div class="w-stat-row">
+                <div>
+                  <div class="w-stat-lbl">Батарея</div>
+                  <div class="w-stat-val" :class="(battery.percent||0)<=20?'val-red':(battery.percent||0)<=50?'val-yel':''" x-text="battery.present ? battery.percent+'%' : '—'"></div>
+                </div>
+                <div class="w-stat-ico" :class="battery.plugged ? 'green' : ((battery.percent||0)>20 ? 'yellow' : 'red')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="6" y="4" width="12" height="18" rx="2"/>
+                    <line x1="10" y1="1" x2="14" y2="1"/>
+                    <template x-if="battery.plugged"><path d="M12 9l-2 4h4l-2 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></template>
+                  </svg>
+                </div>
+              </div>
+              <!-- Horizontal bar (h=1) -->
+              <div class="w-bar-track" x-show="widget.h < 2" style="margin-top:8px">
+                <div class="w-bar-fill" :class="(battery.percent||0)<=20?'red':(battery.percent||0)<=50?'yellow':'green'" :style="`width:${battery.present ? battery.percent||0 : 0}%`"></div>
+              </div>
+              <!-- Vertical fill (h≥2) -->
+              <div class="w-bat-vtrack" x-show="widget.h >= 2">
+                <div class="w-bat-vfill"
+                     :class="(battery.percent||0)<=20?'red':(battery.percent||0)<=50?'yellow':'green'"
+                     :style="`height:${battery.present ? battery.percent||0 : 0}%`"></div>
+                <div class="w-bat-vtext" x-show="battery.plugged">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+              </div>
+              <div class="w-bat-footer">
+                <span class="w-stat-sub" x-text="battery.status || (battery.present ? '' : 'Нет батареи')"></span>
+                <span class="w-bat-plug" x-show="battery.plugged">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  Заряжается
+                </span>
+              </div>
+            </div>
+
+            <!-- ═══ NETWORK ═══ -->
+            <div class="w-net" x-show="widget.type==='network' && !editMode">
+              <div class="w-stat-row">
+                <div class="w-stat-lbl">Сеть</div>
+                <div class="w-stat-ico blue" style="width:28px;height:28px">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </div>
+              </div>
+              <div class="w-net-speeds">
+                <div class="w-net-row">
+                  <span class="w-net-arrow down">↓</span>
+                  <span class="w-net-val" x-text="stats.net_down||'0 KB/s'"></span>
+                </div>
+                <div class="w-net-row">
+                  <span class="w-net-arrow up">↑</span>
+                  <span class="w-net-val secondary" x-text="stats.net_up||'0 KB/s'"></span>
+                </div>
+              </div>
+              <div class="w-net-sparks">
+                <svg class="w-spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline :points="netDownSparkPts" fill="none" stroke="var(--green)" stroke-width="1.5" opacity="0.7"/></svg>
+                <svg class="w-spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline :points="netUpSparkPts" fill="none" stroke="var(--yellow)" stroke-width="1.5" opacity="0.6"/></svg>
+              </div>
+            </div>
+
+            <!-- ═══ QUICK ACTIONS ═══ -->
+            <div class="w-actions" x-show="widget.type==='actions' && !editMode">
+              <button class="w-actions-btn" @click="API.takeScreenshot().then(()=>showToast('Скриншот сохранён','success'))" title="Скриншот">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span>Скриншот</span>
+              </button>
+              <button class="w-actions-btn" @click="API.flushRam().then(r=>showToast('RAM: '+r.available_mb+' MB','success'))" title="RAM">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <span>RAM</span>
+              </button>
+              <button class="w-actions-btn" @click="API.cleanTemp().then(r=>showToast('Удалено '+r.deleted+' файлов','success'))" title="Temp">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>Очистка</span>
+              </button>
+              <button class="w-actions-btn" @click="API.muteToggle()" title="Mute">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                <span>Mute</span>
+              </button>
+            </div>
+
+            <!-- ═══ USAGE STATS ═══ -->
+            <div class="w-usage" x-show="widget.type==='usage' && !editMode">
+              <div class="w-stat-row">
+                <div class="w-stat-lbl">Активность</div>
+                <div class="w-stat-ico purple" style="width:28px;height:28px">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                </div>
+              </div>
+              <div class="w-usage-big">
+                <div class="w-stat-val purple" x-text="usageStats.commands_today || 0"></div>
+                <div class="w-stat-sub" style="margin-top:2px">команд сегодня</div>
+              </div>
+              <div class="w-usage-grid">
+                <div class="w-usage-cell">
+                  <div class="w-usage-num" style="color:var(--accent)" x-text="usageStats.ai_today||0"></div>
+                  <div class="w-usage-lbl">AI</div>
+                </div>
+                <div class="w-usage-cell">
+                  <div class="w-usage-num" style="color:var(--blue)" x-text="usageStats.screenshots_today||0"></div>
+                  <div class="w-usage-lbl">Фото</div>
+                </div>
+                <div class="w-usage-cell">
+                  <div class="w-usage-num" x-text="usageStats.total_commands||0"></div>
+                  <div class="w-usage-lbl">Всего</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </template>
+      </div>
+
+      <!-- Widget Catalog Modal -->
+      <div class="modal-overlay" x-show="showCatalog" x-transition @click.self="showCatalog=false" style="display:none">
+        <div class="modal" style="max-width:460px">
+          <div class="modal-header">
+            <div class="modal-title">Добавить виджет</div>
+            <button class="modal-close" @click="showCatalog=false" aria-label="Закрыть">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          </div>
+          <div class="catalog-grid">
+            <template x-for="cat in catalogList" :key="cat.key">
+              <div class="catalog-item" :class="{ disabled: !canFit(cat.key) }" @click="canFit(cat.key) && (addWidget(cat.key),showCatalog=false)">
+                <div class="catalog-ico" x-text="cat.icon"></div>
+                <div class="catalog-lbl" x-text="cat.label"></div>
+                <div class="catalog-sz text-xs text-muted" x-text="canFit(cat.key) ? `${cat.minW}×${cat.minH} → ${cat.maxW}×${cat.maxH}` : 'Нет места'"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-dashboard -->
+
+    <!-- ── PAGE: CHAT ── -->
+    <div class="page page-chat" id="page-chat" :class="{ active: page === 'chat' }"
+         x-data="chatPage()" x-init="init()">
+
+      <!-- Chat topbar -->
+      <div class="chat-topbar">
+        <div class="chat-sub" x-text="providerLabel + (toolUse ? ' · Tool Use' : '')">Groq</div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-ghost btn-sm btn-icon" @click="clearHistory()" title="Очистить историю" aria-label="Очистить историю чата">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+          <button class="btn btn-ghost btn-sm btn-icon" @click="loadAISettings(); openModal('modal-ai-settings')" title="Настройки ИИ" aria-label="Настройки ИИ">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93a10 10 0 0 1 14.14 14.14"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- AI settings modal -->
+      <div class="modal-overlay hidden" id="modal-ai-settings">
+        <div class="modal">
+          <div class="modal-header">
+            <span class="modal-title">Настройки ИИ</span>
+            <button class="modal-close" @click="closeModal('modal-ai-settings')" aria-label="Закрыть">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Провайдер</label>
+            <div class="seg-ctrl" id="chat-provider-seg">
+              <button type="button" class="seg-btn active" data-val="custom">API</button>
+              <button type="button" class="seg-btn" data-val="ollama">Ollama</button>
+            </div>
+            <input type="hidden" id="chat-ai-provider" value="custom">
+          </div>
+          <div id="chat-custom-section">
+            <div class="form-group">
+              <label class="form-label">Base URL</label>
+              <input id="chat-custom-url" type="text" class="input" placeholder="https://api.groq.com/openai/v1">
+              <span class="sfield-hint">OpenAI-совместимый формат: Groq, Cerebras, SambaNova, Mistral, OpenRouter, Together, xAI, Gemini</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">API ключ</label>
+              <input id="chat-custom-key" type="password" class="input" placeholder="sk-...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Модель</label>
+              <input id="chat-custom-model" type="text" class="input" placeholder="llama-3.3-70b-versatile">
+            </div>
+          </div>
+          <div id="chat-ollama-section" style="display:none">
+            <div class="form-group">
+              <label class="form-label">URL Ollama</label>
+              <input id="chat-ollama-url" type="text" class="input" placeholder="http://localhost:11434">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Модель</label>
+              <input id="chat-ollama-model" type="text" class="input" placeholder="llama3.2">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vision модель</label>
+              <input id="chat-ollama-vision" type="text" class="input" placeholder="llava">
+            </div>
+          </div>
+          <div class="form-group">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <label class="form-label" style="margin:0">Tool Use</label>
+              <label class="toggle"><input type="checkbox" id="chat-tool-use" checked><div class="toggle-track"></div></label>
+            </div>
+          </div>
+          <div class="form-group">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <label class="form-label" style="margin:0">Веб-поиск</label>
+              <label class="toggle"><input type="checkbox" id="chat-web-search" checked><div class="toggle-track"></div></label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-ghost" @click="closeModal('modal-ai-settings')">Отмена</button>
+            <button class="btn btn-gradient" id="save-ai-settings-btn">Сохранить</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div class="chat-messages" id="chat-messages"
+           @dragover.prevent="dragging = true"
+           @dragleave="if (!$el.contains($event.relatedTarget)) dragging = false"
+           @drop.prevent="handleDrop($event)"
+           :class="{ 'drag-over': dragging }">
+        <div class="drag-over-overlay">Перетащите файл или изображение</div>
+
+        <!-- Empty state -->
+        <div class="chat-empty" id="chat-empty-state">
+          <div class="chat-empty-orb">✦</div>
+          <div class="chat-empty-title">Purify AI Assistant</div>
+          <div class="chat-empty-sub">Задайте вопрос, дайте команду или поделитесь скриншотом.</div>
+          <div class="chat-empty-hints">
+            <div class="chat-hint-chip" @click="inputText='Открой браузер'; $nextTick(()=>sendMessage())" style="pointer-events:all;cursor:pointer">Открой браузер</div>
+            <div class="chat-hint-chip" @click="inputText='Покажи статус системы'; $nextTick(()=>sendMessage())" style="pointer-events:all;cursor:pointer">Покажи статус системы</div>
+            <div class="chat-hint-chip" @click="inputText='Сделай скриншот'; $nextTick(()=>sendMessage())" style="pointer-events:all;cursor:pointer">Сделай скриншот</div>
+          </div>
+        </div>
+
+        <!-- Messages rendered by JS -->
+        <div id="chat-scroll-anchor"></div>
+        <button class="scroll-to-bottom" x-show="showScrollBtn" @click="scrollToBottom()" x-transition aria-label="Прокрутить вниз">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Attach preview -->
+      <div class="chat-input-area">
+        <div class="chat-attach-preview" x-show="pendingAttach" x-transition>
+          <span x-text="pendingAttach?.type === 'image' ? '🖼' : '📎'"></span>
+          <span x-text="pendingAttach?.name" class="truncate"></span>
+          <button class="remove-attach" @click="pendingAttach = null">✕</button>
+        </div>
+
+        <div class="chat-input-row">
+          <div class="chat-input-actions">
+            <button class="btn btn-ghost btn-icon" @click="pickFile()" title="Прикрепить файл" aria-label="Прикрепить файл">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <button class="btn btn-ghost btn-icon" @click="screenshot()" title="Скриншот экрана" aria-label="Прикрепить скриншот экрана">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </button>
+          </div>
+
+          <textarea
+            class="chat-textarea"
+            id="chat-textarea"
+            placeholder="Напишите сообщение... (Enter — отправить, Shift+Enter — новая строка)"
+            rows="1"
+            x-model="inputText"
+            @keydown.enter.prevent.stop="if (!$event.shiftKey) sendMessage()"
+            @input="autoResize($el)"></textarea>
+
+          <button class="btn btn-gradient btn-icon" style="width:38px;height:38px" @click="sendMessage()" :disabled="sending">
+            <span x-show="!sending">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </span>
+            <span x-show="sending" class="spinner" style="width:14px;height:14px"></span>
+          </button>
+        </div>
+      </div>
+    </div><!-- /page-chat -->
+
+    <!-- ── PAGE: BOT ── -->
+    <div class="page-container page" id="page-bot" :class="{ active: page === 'bot' }">
+
+      <div class="bot-banner" id="bot-banner" :class="botOnline ? 'online' : 'offline'">
+        <div class="status-dot" :class="botOnline ? 'online pulse' : 'offline'"></div>
+        <span x-text="botOnline ? 'Бот запущен и принимает команды' : 'Бот остановлен'"></span>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:24px">
+        <button class="btn btn-gradient btn-lg" id="start-bot-btn" @click="toggleBot()">
+          <span x-text="botOnline ? '⏹ Остановить' : '▶ Запустить бота'"></span>
+        </button>
+      </div>
+
+      <!-- Telegram settings -->
+      <div class="sfield-group">
+        <div class="token-form-card">
+          <div class="sfield">
+            <label class="sfield-label" for="bot-token-input">Токен бота</label>
+            <div class="sfield-body">
+              <div style="display:flex;gap:8px;align-items:center">
+                <div style="position:relative;flex:1">
+                  <input id="bot-token-input" type="password" class="input" placeholder="1234567890:ABCdef..." style="padding-right:38px">
+                  <button id="token-eye" type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px">👁</button>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="verify-token-btn" style="flex-shrink:0">Проверить</button>
+              </div>
+              <div id="verify-result" class="ob-verify hidden"></div>
+              <span class="sfield-hint">Получить у @BotFather в Telegram</span>
+            </div>
+          </div>
+          <div class="sfield-divider"></div>
+          <div class="sfield">
+            <label class="sfield-label" for="bot-chatid-input">Chat ID</label>
+            <div class="sfield-body">
+              <div style="display:flex;gap:8px">
+                <input id="bot-chatid-input" type="text" class="input" placeholder="123456789" style="flex:1">
+                <button class="btn btn-secondary btn-sm" id="test-chatid-btn" style="flex-shrink:0">Тест</button>
+              </div>
+              <span class="sfield-hint">Узнать свой ID: написать @userinfobot</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="token-form-card">
+          <div class="sfield-row" style="padding-bottom:14px">
+            <div class="sfield-row-left">
+              <div class="sfield-label">Автоудаление сообщений</div>
+              <div class="sfield-hint" style="margin-top:3px">Удалять команду и ответ бота через N секунд (0 = выкл)</div>
+            </div>
+            <div class="sfield-num-wrap">
+              <input id="settings-del-delay" type="number" class="input sfield-num" min="0" value="0">
+              <span class="sfield-unit">сек</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Favorites -->
+        <div class="token-form-card" style="padding:16px">
+          <div class="sfield-label" style="margin-bottom:12px">Избранные команды</div>
+          <div class="sfield-hint" style="margin-bottom:14px">До 8 кнопок в Telegram inline-меню</div>
+          <div class="favorites-grid" id="favorites-grid" x-data="favoritesGrid()">
+            <template x-for="(fav, i) in slots" :key="i">
+              <div class="fav-slot" :class="{ filled: fav }" @click="editSlot(i)">
+                <span x-text="fav || '+'"></span>
+                <span class="fav-slot-label" x-text="fav ? fav : 'Слот '+(i+1)"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div>
+          <button class="btn btn-gradient" id="save-bot-settings-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: PROGRAMS ── -->
+    <div class="page-container page" id="page-programs" :class="{ active: page === 'programs' }"
+         x-data="programsPage()" x-init="load()">
+      <div class="page-header">
+        <div class="flex items-center gap-2">
+          <div class="search-input" style="width:220px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input placeholder="Поиск..." x-model="search">
+          </div>
+          <button class="btn btn-primary" @click="openAddModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Добавить
+          </button>
+        </div>
+      </div>
+
+      <div class="card p-0" style="overflow:hidden">
+        <div class="table-wrap" style="border:none;border-radius:0">
+          <table>
+            <thead>
+              <tr><th style="width:40px"></th><th>Название</th><th>Путь</th><th style="width:100px">Действия</th></tr>
+            </thead>
+            <tbody id="programs-tbody">
+              <template x-if="filtered.length === 0">
+                <tr><td colspan="4">
+                  <div class="empty-state" style="padding:36px">
+                    <div class="empty-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  </div>
+                    <div class="empty-title" x-text="search ? 'Не найдено' : 'Нет программ'"></div>
+                    <div class="empty-desc" x-show="!search">Добавьте программы для быстрого запуска через бота или голосовые команды</div>
+                  </div>
+                </td></tr>
+              </template>
+              <template x-for="p in filtered" :key="p.name">
+                <tr>
+                  <td style="text-align:center;font-size:18px" x-text="p.icon || '📄'"></td>
+                  <td class="fw-6" x-text="p.name"></td>
+                  <td class="td-mono truncate" style="max-width:260px" x-text="p.path"></td>
+                  <td>
+                    <div class="flex gap-2">
+                      <button class="btn btn-success btn-sm" @click="run(p.name)" :aria-label="'Запустить ' + p.name">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                      </button>
+                      <button class="btn btn-danger btn-sm" @click="remove(p.name)" :aria-label="'Удалить ' + p.name">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add program modal -->
+      <div class="modal-overlay hidden" id="modal-add-program" @click.self="$el.classList.add('hidden')">
+        <div class="modal">
+          <div class="modal-header">
+            <span class="modal-title">Добавить программу</span>
+            <button class="modal-close" @click="$el.closest('.modal-overlay').classList.add('hidden')" aria-label="Закрыть">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Название</label>
+            <input id="prog-name-input" type="text" class="input" placeholder="Название программы">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Путь к файлу</label>
+            <div class="input-group">
+              <input id="prog-path-input" type="text" class="input" placeholder="C:\...\program.exe">
+              <button class="btn btn-secondary" id="prog-browse-btn">Обзор</button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-ghost" @click="$el.closest('.modal-overlay').classList.add('hidden')">Отмена</button>
+            <button class="btn btn-primary" id="modal-add-program-ok" @click="addProgram()">Добавить</button>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-programs -->
+
+    <!-- ── PAGE: SCRIPTS ── -->
+    <div class="page-container page" id="page-scripts" :class="{ active: page === 'scripts' }"
+         x-data="scriptsPage()" x-init="load()">
+      <div class="page-header">
+        <button class="btn btn-primary" @click="openAddModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Создать
+        </button>
+      </div>
+
+      <div id="scripts-list">
+        <template x-if="items.length === 0">
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div class="empty-title">Нет сценариев</div>
+            <div class="empty-desc">Создайте сценарий для запуска последовательности команд одним действием</div>
+          </div>
+        </template>
+        <template x-for="s in items" :key="s.name">
+          <div class="card mb-3">
+            <div class="flex items-start gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="fw-7 text-white" x-text="s.name"></span>
+                  <span class="badge badge-violet" x-show="s.in_bot">В боте</span>
+                  <span class="badge badge-gray" x-show="!s.in_bot">Только UI</span>
+                </div>
+                <template x-for="(step, i) in s.steps">
+                  <div class="text-sm text-muted" style="margin-bottom:2px">
+                    <span class="text-muted" x-text="(i+1) + '. '"></span><span x-text="step"></span>
+                  </div>
+                </template>
+              </div>
+              <div class="flex gap-2" style="flex-shrink:0">
+                <button class="btn btn-success btn-sm" @click="run(s.name)">▶ Запустить</button>
+                <button class="btn btn-danger btn-sm btn-icon" @click="remove(s.name)" :aria-label="'Удалить ' + s.name">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Add script modal -->
+      <div class="modal-overlay hidden" id="modal-add-script" @click.self="$el.classList.add('hidden')">
+        <div class="modal wide">
+          <div class="modal-header">
+            <span class="modal-title">Создать сценарий</span>
+            <button class="modal-close" @click="$el.closest('.modal-overlay').classList.add('hidden')" aria-label="Закрыть">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Название</label>
+            <input id="script-name-input" type="text" class="input" placeholder="Рабочее место">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Шаги</label>
+            <div id="script-steps-list"></div>
+            <button class="btn btn-ghost btn-sm" id="add-step-btn" style="margin-top:6px">+ Добавить шаг</button>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-ghost" @click="$el.closest('.modal-overlay').classList.add('hidden')">Отмена</button>
+            <button class="btn btn-primary" id="modal-add-script-ok" @click="addScript()">Создать</button>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-scripts -->
+
+    <!-- ── PAGE: VOICE ── -->
+    <div class="page-container page" id="page-voice" :class="{ active: page === 'voice' }"
+         x-data="voicePage()" x-init="load()">
+
+      <div class="voice-grid">
+
+        <!-- ── Activation ── -->
+        <div class="card voice-activation-card">
+          <div class="voice-card-header">
+            <div class="voice-card-icon vi-accent">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+            </div>
+            <span class="voice-card-title">Активация</span>
+          </div>
+          <div class="voice-mic-zone">
+            <div class="mic-button" :class="{ recording: recording }" @click="toggleRecording()" id="mic-btn"
+                 :aria-label="recording ? 'Остановить запись' : 'Начать голосовую команду'" role="button">
+              <template x-if="!recording">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+              </template>
+              <template x-if="recording">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+              </template>
+              <template x-if="recording">
+                <div class="mic-rings"></div><div class="mic-rings"></div><div class="mic-rings"></div>
+              </template>
+            </div>
+            <div class="voice-hotkey-pill">
+              <span class="text-muted" style="font-size:12px">Зажать</span>
+              <kbd class="hotkey-key" id="hotkey-key">Ctrl</kbd>
+              <span class="text-muted" style="font-size:12px">для записи</span>
+            </div>
+            <button class="btn btn-ghost btn-sm" @click="openModal('modal-hotkey')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h2a2 2 0 0 1 2 2v2"/><path d="M6 3H4a2 2 0 0 0-2 2v2"/></svg>
+              Изменить клавишу
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Wake Word ── -->
+        <div class="card voice-wake-card">
+          <div class="voice-card-header">
+            <div class="voice-card-icon vi-blue">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            </div>
+            <span class="voice-card-title">Wake Word «Пури»</span>
+            <label class="toggle" style="margin-left:auto" aria-label="Активировать wake word">
+              <input type="checkbox" id="wake-word-toggle">
+              <div class="toggle-track"></div>
+            </label>
+          </div>
+          <div class="wake-status-row">
+            <div class="wake-orb" :class="wakeActive ? 'active' : 'inactive'" id="wake-orb"></div>
+            <span class="wake-status-text" x-text="wakeActive ? 'Слушает...' : 'Выключен'" aria-live="polite"></span>
+            <span class="wake-status-sub" x-show="wakeActive" style="display:none">Произнесите «Пури»</span>
+          </div>
+          <div class="wake-samples-block">
+            <div class="wake-samples-header">
+              <span class="text-sm text-muted">Образцы для обучения</span>
+              <span class="wake-samples-badge" id="wake-samples-count">0 / 20</span>
+            </div>
+            <div class="wake-prog-bar">
+              <div class="wake-prog-fill" :style="`width:${Math.round((samplesCount/20)*100)}%`"></div>
+            </div>
+            <div class="sample-dots" id="samples-progress">
+              <template x-for="n in 20" :key="n">
+                <div class="sample-dot" :class="{ recorded: n <= samplesCount }"></div>
+              </template>
+            </div>
+            <button class="btn btn-secondary btn-sm" style="margin-top:12px" id="record-sample-btn" @click="recordSample()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+              Записать образец
+            </button>
+          </div>
+        </div>
+
+        <!-- ── TTS ── -->
+        <div class="card voice-tts-card">
+          <div class="voice-card-header">
+            <div class="voice-card-icon vi-green">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+            </div>
+            <span class="voice-card-title">Голосовые ответы (TTS)</span>
+          </div>
+          <div class="tts-main-toggles">
+            <div class="tts-main-row">
+              <div>
+                <div class="tts-main-title">Озвучка ответов</div>
+                <div class="tts-main-sub">Edge TTS — нейронные голоса Microsoft</div>
+              </div>
+              <label class="toggle" style="margin-left:auto" for="tts-toggle">
+                <input type="checkbox" id="tts-toggle">
+                <div class="toggle-track"></div>
+              </label>
+            </div>
+            <div class="tts-main-divider"></div>
+            <div class="tts-main-row">
+              <div>
+                <div class="tts-main-title">Тихий режим</div>
+                <div class="tts-main-sub">Полное отключение всех голосовых ответов</div>
+              </div>
+              <label class="toggle" style="margin-left:auto" for="silence-mode-toggle">
+                <input type="checkbox" id="silence-mode-toggle">
+                <div class="toggle-track"></div>
+              </label>
+            </div>
+            <div class="tts-main-divider"></div>
+            <!-- Голос -->
+            <div class="tts-main-row">
+              <div>
+                <div class="tts-main-title">Голос</div>
+                <div class="tts-main-sub">Выбор голоса для озвучки</div>
+              </div>
+              <div class="tts-voice-select" style="margin-left:auto;display:flex;gap:6px">
+                <button class="pill-btn" :class="{ active: ttsVoice==='male' }" @click="setTtsVoice('male')">Мужской</button>
+                <button class="pill-btn" :class="{ active: ttsVoice==='female' }" @click="setTtsVoice('female')">Женский</button>
+              </div>
+            </div>
+            <div class="tts-main-divider"></div>
+            <!-- Громкость -->
+            <div class="tts-main-row">
+              <div>
+                <div class="tts-main-title">Громкость</div>
+                <div class="tts-main-sub" x-text="'Уровень: ' + ttsVolume + '%'">Уровень: 100%</div>
+              </div>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:8px;min-width:140px">
+                <input type="range" min="0" max="100" step="5" :value="ttsVolume"
+                       @input="setTtsVolume($event.target.value)"
+                       style="flex:1;accent-color:var(--accent)">
+              </div>
+            </div>
+          </div>
+          <div class="tts-cats-label">По категориям</div>
+          <div class="tts-cats-grid">
+            <div class="tts-cat-row">
+              <div class="tts-cat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+              <span class="tts-cat-name">Медиа (громкость, треки)</span>
+              <label class="toggle"><input type="checkbox" id="tts-cat-media"><div class="toggle-track"></div></label>
+            </div>
+            <div class="tts-cat-row">
+              <div class="tts-cat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <span class="tts-cat-name">Питание</span>
+              <label class="toggle"><input type="checkbox" id="tts-cat-power"><div class="toggle-track"></div></label>
+            </div>
+            <div class="tts-cat-row">
+              <div class="tts-cat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M9 11V7a3 3 0 0 1 6 0v4"/><circle cx="9" cy="16" r="1" fill="currentColor"/><circle cx="15" cy="16" r="1" fill="currentColor"/></svg></div>
+              <span class="tts-cat-name">AI ответы</span>
+              <label class="toggle"><input type="checkbox" id="tts-cat-ai" checked><div class="toggle-track"></div></label>
+            </div>
+            <div class="tts-cat-row">
+              <div class="tts-cat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+              <span class="tts-cat-name">Информация</span>
+              <label class="toggle"><input type="checkbox" id="tts-cat-info" checked><div class="toggle-track"></div></label>
+            </div>
+            <div class="tts-cat-row">
+              <div class="tts-cat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+              <span class="tts-cat-name">Неизвестные команды</span>
+              <label class="toggle"><input type="checkbox" id="tts-cat-unknown" checked><div class="toggle-track"></div></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Exclusions ── -->
+        <div class="card voice-excl-card">
+          <div class="voice-card-header">
+            <div class="voice-card-icon vi-yellow">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            </div>
+            <span class="voice-card-title">Исключения процессов</span>
+          </div>
+          <p class="voice-excl-desc">Wake word не активируется, пока исключённое окно в фокусе</p>
+          <div class="exclusion-list" id="exclusion-list"></div>
+          <div class="voice-excl-add">
+            <select class="input" id="processes-select">
+              <option value="">Выберите процесс...</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" id="add-exclusion-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Добавить
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /voice-grid -->
+
+      <!-- Hotkey modal -->
+      <div class="modal-overlay hidden" id="modal-hotkey" @click.self="$el.classList.add('hidden')">
+        <div class="modal">
+          <div class="modal-header">
+            <span class="modal-title">Клавиша активации</span>
+            <button class="modal-close" @click="$el.closest('.modal-overlay').classList.add('hidden')" aria-label="Закрыть">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <p class="text-sm text-muted mb-3">Нажмите любую клавишу или комбинацию для записи:</p>
+          <div class="hotkey-capture-box" id="hotkey-capture" tabindex="0">Кликните сюда и нажмите клавишу</div>
+        </div>
+      </div>
+    </div><!-- /page-voice -->
+
+    <!-- ── PAGE: LOGS ── -->
+    <div class="page-container page" id="page-logs" :class="{ active: page === 'logs' }"
+         x-data="logsPage()" x-init="init()">
+      <div class="page-header">
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-sm" id="logs-clear-btn">Очистить</button>
+        </div>
+      </div>
+
+      <div class="log-toolbar">
+        <button class="log-filter-btn" data-level="debug">DEBUG</button>
+        <button class="log-filter-btn" data-level="info">INFO</button>
+        <button class="log-filter-btn" data-level="success">SUCCESS</button>
+        <button class="log-filter-btn" data-level="warn">WARN</button>
+        <button class="log-filter-btn" data-level="error">ERROR</button>
+        <div class="search-input" style="margin-left:auto;width:200px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input placeholder="Поиск..." class="log-search-input">
+        </div>
+      </div>
+
+      <div class="log-viewer" id="log-viewer" style="position:relative"></div>
+    </div>
+
+    <!-- ── PAGE: SETTINGS ── -->
+    <div class="page-container page" id="page-settings" :class="{ active: page === 'settings' }"
+         x-data="{ stab: 'weather' }">
+
+      <div class="settings-layout">
+
+        <!-- Left tab nav -->
+        <nav class="settings-tabs" aria-label="Разделы настроек">
+          <div class="settings-tabs-label">Настройки</div>
+
+          <button class="settings-tab-btn" :class="{ active: stab==='weather' }" @click="stab='weather'">
+            <span class="stab-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+            </span>
+            Погода
+          </button>
+
+          <button class="settings-tab-btn" :class="{ active: stab==='sys' }" @click="stab='sys'">
+            <span class="stab-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93a10 10 0 0 1 14.14 14.14"/></svg>
+            </span>
+            Система
+          </button>
+        </nav>
+
+        <!-- Right content panels -->
+        <div class="settings-content">
+
+          <!-- Weather panel -->
+          <div class="settings-panel" x-show="stab==='weather'" style="display:none">
+            <div class="settings-panel-head">
+              <div class="settings-panel-title">Погода</div>
+              <div class="settings-panel-desc">Настройки виджета погоды</div>
+            </div>
+            <div class="sfield-group">
+              <div class="settings-card">
+                <div class="sfield">
+                  <label class="sfield-label" for="settings-city">Город</label>
+                  <div class="sfield-body">
+                    <input id="settings-city" type="text" class="input" placeholder="Ваш город">
+                    <span class="sfield-hint">Данные погоды загружаются автоматически — API ключ не нужен</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System panel -->
+          <div class="settings-panel" x-show="stab==='sys'" style="display:none">
+            <div class="settings-panel-head">
+              <div class="settings-panel-title">Система</div>
+              <div class="settings-panel-desc">Параметры запуска и отчётности</div>
+            </div>
+            <div class="sfield-group">
+              <div class="settings-card">
+                <div class="sfield-row">
+                  <div class="sfield-row-left">
+                    <div class="sfield-label">Автозапуск с Windows</div>
+                  </div>
+                  <label class="toggle" aria-label="Автозапуск с Windows">
+                    <input type="checkbox" id="settings-autostart">
+                    <div class="toggle-track"></div>
+                  </label>
+                </div>
+                <div class="sfield-divider"></div>
+                <div class="sfield-row" style="padding-bottom:14px">
+                  <div class="sfield-row-left">
+                    <div class="sfield-label">Аналитика</div>
+                    <div class="sfield-hint" style="margin-top:3px">Анонимные данные об использовании</div>
+                  </div>
+                  <label class="toggle" aria-label="Аналитика">
+                    <input type="checkbox" id="settings-analytics">
+                    <div class="toggle-track"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /settings-content -->
+      </div><!-- /settings-layout -->
+
+      <!-- Sticky save bar -->
+      <div class="settings-save-bar">
+        <div class="settings-save-actions">
+          <button class="btn btn-ghost btn-sm" id="export-config-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Экспорт
+          </button>
+          <button class="btn btn-ghost btn-sm" id="import-config-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Импорт
+          </button>
+          <button class="btn btn-gradient" id="save-settings-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Сохранить настройки
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /page-settings -->
+
+    <!-- ── PAGE: TOOLS (Обслуживание) ── -->
+    <div class="page-container page" id="page-tools" :class="{ active: page === 'tools' }"
+         x-data="toolsPage()" x-init="init()">
+
+
+      <div style="overflow-y:auto;flex:1;padding:0 24px 24px">
+
+        <!-- Tab switcher -->
+        <div class="tools-tabs">
+          <button class="tools-tab" :class="{ active: tab === 'cleaner' }" @click="tab = 'cleaner'">Очистка</button>
+          <button class="tools-tab" :class="{ active: tab === 'monitor' }" @click="tab = 'monitor'">Мониторинг</button>
+          <button class="tools-tab" :class="{ active: tab === 'scheduler' }" @click="tab = 'scheduler'">Планировщик</button>
+        </div>
+
+        <!-- TAB: Cleaner -->
+        <div x-show="tab === 'cleaner'" x-transition>
+          <div class="cleaner-grid">
+            <div class="card cleaner-action-card">
+              <div class="cleaner-icon" style="color:var(--yellow)">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              </div>
+              <div class="cleaner-title">Очистить Temp</div>
+              <div class="cleaner-desc">Удалить временные файлы Windows</div>
+              <button class="btn btn-primary btn-sm" @click="cleanTemp()" :disabled="tempRunning" style="margin-top:auto">
+                <span x-show="tempRunning" class="spinner" style="width:12px;height:12px"></span>
+                <span x-text="tempRunning ? 'Очистка...' : 'Запустить'"></span>
+              </button>
+              <div x-show="tempResult" class="cleaner-result" x-text="tempResult" x-transition></div>
+            </div>
+
+            <div class="card cleaner-action-card">
+              <div class="cleaner-icon" style="color:var(--blue)">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              </div>
+              <div class="cleaner-title">Очистить RAM</div>
+              <div class="cleaner-desc">Освободить оперативную память</div>
+              <button class="btn btn-primary btn-sm" @click="flushRam()" :disabled="ramRunning" style="margin-top:auto">
+                <span x-show="ramRunning" class="spinner" style="width:12px;height:12px"></span>
+                <span x-text="ramRunning ? 'Очистка...' : 'Запустить'"></span>
+              </button>
+              <div x-show="ramResult" class="cleaner-result" x-text="ramResult" x-transition></div>
+            </div>
+
+            <div class="card cleaner-action-card">
+              <div class="cleaner-icon" style="color:var(--green)">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <div class="cleaner-title">Автозагрузка</div>
+              <div class="cleaner-desc">Управление программами запуска</div>
+              <button class="btn btn-primary btn-sm" @click="loadStartup()" :disabled="startupLoading" style="margin-top:auto">
+                <span x-show="startupLoading" class="spinner" style="width:12px;height:12px"></span>
+                <span x-text="startupLoading ? 'Загрузка...' : 'Показать'"></span>
+              </button>
+            </div>
+          </div>
+
+          <div x-show="startupPrograms.length > 0" class="card" style="margin-top:16px" x-transition>
+            <div class="card-title">Программы автозагрузки</div>
+            <div class="startup-list">
+              <template x-for="p in startupPrograms" :key="p.name">
+                <div class="startup-item">
+                  <div class="startup-item-info">
+                    <div class="startup-item-name" x-text="p.name"></div>
+                    <div class="startup-item-path text-sm text-secondary" x-text="p.command"></div>
+                  </div>
+                  <button class="btn btn-danger btn-xs" @click="removeStartup(p.name, p.hive, p.key)" title="Удалить">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Monitor -->
+        <div x-show="tab === 'monitor'" x-transition>
+          <div class="monitor-toggles">
+            <div class="card monitor-toggle-card">
+              <div class="monitor-toggle-header">
+                <div>
+                  <div class="monitor-toggle-title">Системный монитор</div>
+                  <div class="text-sm text-secondary">Оповещения при превышении порогов CPU/RAM/Диск</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" x-model="monitorEnabled" @change="toggleMonitor()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div x-show="monitorEnabled" x-transition class="monitor-thresholds">
+                <div class="monitor-threshold-row">
+                  <label class="form-label">CPU порог</label>
+                  <input type="range" class="input-range" min="50" max="100" x-model="thresholds.cpu" @change="saveThresholds()">
+                  <span class="text-sm text-accent" x-text="thresholds.cpu + '%'"></span>
+                </div>
+                <div class="monitor-threshold-row">
+                  <label class="form-label">RAM порог</label>
+                  <input type="range" class="input-range" min="50" max="100" x-model="thresholds.ram" @change="saveThresholds()">
+                  <span class="text-sm text-accent" x-text="thresholds.ram + '%'"></span>
+                </div>
+                <div class="monitor-threshold-row">
+                  <label class="form-label">Диск порог</label>
+                  <input type="range" class="input-range" min="50" max="100" x-model="thresholds.disk" @change="saveThresholds()">
+                  <span class="text-sm text-accent" x-text="thresholds.disk + '%'"></span>
+                </div>
+                <div class="monitor-threshold-row">
+                  <label class="form-label">Авто-скриншот (мин, 0 = выкл)</label>
+                  <input type="number" class="input" style="width:100px" min="0" max="60" x-model.number="screenshotInterval" @change="saveThresholds()">
+                </div>
+              </div>
+            </div>
+
+            <div class="card monitor-toggle-card">
+              <div class="monitor-toggle-header">
+                <div>
+                  <div class="monitor-toggle-title">Перехват уведомлений</div>
+                  <div class="text-sm text-secondary">Пересылать Windows-уведомления в Telegram</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" x-model="notifWatcherEnabled" @change="toggleNotifWatcher()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Scheduler -->
+        <div x-show="tab === 'scheduler'" x-transition>
+          <div class="card">
+            <div class="monitor-add-task">
+              <div class="flex gap-2" style="align-items:flex-end;flex-wrap:wrap">
+                <div style="flex:1;min-width:140px">
+                  <label class="form-label">Название</label>
+                  <input class="input" x-model="newTask.name" placeholder="Бэкап логов">
+                </div>
+                <div style="flex:2;min-width:200px">
+                  <label class="form-label">Скрипт / команда</label>
+                  <input class="input" x-model="newTask.script" placeholder="python backup.py">
+                </div>
+                <div style="flex:1;min-width:100px">
+                  <label class="form-label">Время (HH:MM)</label>
+                  <input class="input" x-model="newTask.cron" placeholder="03:00">
+                </div>
+                <button class="btn btn-primary btn-sm" @click="addTask()" :disabled="!newTask.name.trim() || !newTask.script.trim() || !newTask.cron.trim()">Добавить</button>
+              </div>
+            </div>
+
+            <div x-show="tasks.length === 0" class="text-sm text-secondary" style="padding:12px 0">Задачи не добавлены</div>
+            <div class="scheduler-list">
+              <template x-for="t in tasks" :key="t.name">
+                <div class="scheduler-item">
+                  <label class="toggle" style="flex-shrink:0">
+                    <input type="checkbox" :checked="t.enabled" @change="toggleTask(t.name, $event.target.checked)">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <div class="scheduler-item-info">
+                    <div class="scheduler-item-name" x-text="t.name"></div>
+                    <div class="text-sm text-secondary" x-text="t.script"></div>
+                    <div class="text-xs text-muted" x-text="t.cron"></div>
+                  </div>
+                  <button class="btn btn-danger btn-xs" @click="removeTask(t.name)" title="Удалить">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /page-tools -->
+
+  </div><!-- /main -->
+
+  <!-- ── COMMAND PALETTE ── -->
+  <div class="cmd-palette-overlay" :class="{ hidden: !cmdOpen }" @click.self="cmdOpen = false">
+    <div class="cmd-palette">
+      <div class="cmd-palette-input-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="cmd-palette-input" id="cmd-input" placeholder="Введите команду или перейдите на страницу..." x-model="cmdQuery" @keydown.arrow-down.prevent="cmdSel = Math.min(cmdSel+1, cmdFiltered.length-1)" @keydown.arrow-up.prevent="cmdSel = Math.max(cmdSel-1, 0)" @keydown.enter="execCmd(cmdFiltered[cmdSel])">
+      </div>
+      <div class="cmd-palette-results">
+        <template x-for="(group, gi) in cmdGroups" :key="gi">
+          <div class="cmd-palette-section" x-show="group.items.filter(i => !cmdQuery || i.label.toLowerCase().includes(cmdQuery.toLowerCase())).length > 0">
+            <div class="cmd-palette-section-label" x-text="group.title"></div>
+            <template x-for="(item, ii) in group.items.filter(i => !cmdQuery || i.label.toLowerCase().includes(cmdQuery.toLowerCase()))" :key="ii">
+              <div class="cmd-palette-item" :class="{ selected: cmdSel === getGlobalIdx(gi, ii) }"
+                   @mouseenter="cmdSel = getGlobalIdx(gi, ii)"
+                   @click="execCmd(item)">
+                <div class="cmd-palette-item-icon" x-text="item.icon"></div>
+                <div>
+                  <div class="cmd-palette-item-name" x-text="item.label"></div>
+                  <div class="cmd-palette-item-sub" x-text="item.sub"></div>
+                </div>
+                <span class="cmd-palette-item-kbd" x-text="item.kbd || ''"></span>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+      <div class="cmd-palette-footer">
+        <span><kbd>↑↓</kbd> навигация</span>
+        <span><kbd>Enter</kbd> выбрать</span>
+        <span><kbd>Esc</kbd> закрыть</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONFIRM MODAL ── -->
+  <div class="modal-overlay hidden" id="modal-confirm" @click.self="$el.classList.add('hidden')">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Подтверждение</span>
+        <button class="modal-close" @click="$el.closest('.modal-overlay').classList.add('hidden')">×</button>
+      </div>
+      <p class="text-sm" id="confirm-message" style="color:var(--text-secondary)"></p>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="confirm-cancel-btn">Отмена</button>
+        <button class="btn btn-danger" id="confirm-ok-btn">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="js/bridge.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
