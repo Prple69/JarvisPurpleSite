@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purify — AI Desktop Assistant</title>
+    <title>Purify — AI ассистент для Windows</title>
     <meta name="description" content="Purify — AI-ассистент для Windows. Управляй компьютером через Telegram, голосом и веб-интерфейс.">
-    <meta property="og:title" content="Purify — AI Desktop Assistant">
+    <meta property="og:title" content="Purify — AI ассистент для Windows">
     <meta property="og:description" content="Управляй компьютером через Telegram, голосом и веб-интерфейс. 42+ AI-инструментов.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://t.me/JarvisPurple">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="Purify — AI Desktop Assistant">
+    <meta name="twitter:title" content="Purify — AI ассистент для Windows">
     <meta name="twitter:description" content="Управляй компьютером через Telegram, голосом и веб-интерфейс.">
     <meta name="theme-color" content="#06020f">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -524,6 +524,7 @@
         .review-text { color: var(--text-dim); font-size: 0.88rem; line-height: 1.7; font-style: italic; }
         .carousel-nav { display: flex; justify-content: center; gap: 8px; margin-top: 24px; }
         .features-nav { display: none; }
+        .products-nav { display: none; }
         .carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(168,85,247,0.2); border: none; cursor: pointer; padding: 0; transition: all 0.3s; }
         .carousel-dot.active { background: var(--purple); width: 24px; border-radius: 4px; }
 
@@ -617,9 +618,15 @@
             .feature-card p { font-size: 0.82rem; line-height: 1.5; }
             .features-nav { display: flex; }
             .feature-card.reveal { opacity: 1; transform: none; transition: none; }
-            .products-grid { grid-template-columns: 1fr; gap: 12px; }
-            .product-card { padding: 24px 20px; border-radius: 14px; }
-            .products-grid .product-card.featured { padding: 28px 20px; }
+            .products-wrap { overflow: hidden; }
+            .products-grid {
+                display: flex !important; gap: 12px;
+                transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+                will-change: transform; cursor: grab; user-select: none;
+            }
+            .products-grid.dragging { transition: none; cursor: grabbing; }
+            .product-card { flex: 0 0 calc(100% - 12px); padding: 24px 20px; border-radius: 14px; }
+            .products-grid .product-card.featured { padding: 28px 20px; flex: 0 0 calc(100% - 12px); }
             .products-grid .product-card.featured .product-icon { width: 64px; height: 64px; margin-bottom: 16px; }
             .products-grid .product-card.featured .product-icon svg { width: 36px; height: 36px; }
             .products-grid .product-card.featured h3 { font-size: 1.2rem; }
@@ -628,7 +635,7 @@
             .product-icon svg { width: 28px; height: 28px; }
             .product-card h3 { font-size: 1rem; margin-bottom: 6px; }
             .product-card p { font-size: 0.85rem; }
-            .product-tag { margin-top: 12px; padding: 4px 12px; font-size: 0.75rem; }
+            .products-nav { display: flex; }
             #showcase { display: none; }
             .cta-box { padding: 48px 24px; }
             .cta-buttons { flex-direction: column; align-items: stretch; }
@@ -654,7 +661,6 @@
         @media (max-width: 480px) {
             .hero h1 { font-size: 1.8rem; }
             .hero-stats { flex-direction: column; gap: 16px; }
-            .products-grid { grid-template-columns: 1fr; }
             .hero-buttons { flex-direction: column; align-items: stretch; }
             .hero-buttons .btn-primary { text-align: center; justify-content: center; }
         }
@@ -874,7 +880,7 @@
                     <div class="demo-titlebar-text">Purify — Live Demo</div>
                     <div style="width: 44px;"></div>
                 </div>
-                <iframe class="demo-frame" src="../ui/web/index.html" title="Purify Demo" loading="lazy"></iframe>
+                <iframe class="demo-frame" src="demo/index.html" title="Purify Demo" loading="lazy"></iframe>
             </div>
             <div class="demo-hint"><span>&#9757; Кликай, листай — это настоящий интерфейс</span></div>
         </div>
@@ -889,7 +895,8 @@
             <h2 class="section-title">Продукты Purple</h2>
             <p class="section-desc">Набор инструментов, которые работают вместе для максимального контроля над вашим ПК.</p>
         </div>
-        <div class="products-grid">
+        <div class="products-wrap">
+        <div class="products-grid" id="products-track">
             <div class="product-card reveal">
                 <span class="product-icon">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#pi3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -923,6 +930,8 @@
                 <p>Официальный бот канала. Оплата, FAQ, статьи и поддержка пользователей.</p>
             </div>
         </div>
+        </div>
+        <div class="carousel-nav products-nav" id="products-nav"></div>
     </div>
 </section>
 
@@ -1354,6 +1363,9 @@ function initCarousel(trackId, navId, desktopPerPage) {
 
 // ==================== FEATURES CAROUSEL (mobile) ====================
 initCarousel('features-track', 'features-nav', 6);
+
+// ==================== PRODUCTS CAROUSEL (mobile) ====================
+initCarousel('products-track', 'products-nav', 3);
 
 // ==================== REVIEWS CAROUSEL ====================
 // Reviews: carousel on mobile, auto-scroll on desktop
