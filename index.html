@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purify — AI Desktop Assistant</title>
+    <meta name="description" content="Purify — AI-ассистент для Windows. Управляй компьютером через Telegram, голосом и веб-интерфейс.">
+    <meta property="og:title" content="Purify — AI Desktop Assistant">
+    <meta property="og:description" content="Управляй компьютером через Telegram, голосом и веб-интерфейс. 42+ AI-инструментов.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://t.me/JarvisPurple">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Purify — AI Desktop Assistant">
+    <meta name="twitter:description" content="Управляй компьютером через Telegram, голосом и веб-интерфейс.">
+    <meta name="theme-color" content="#06020f">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" href="logo-warp.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="logo-warp.svg">
+    <link rel="canonical" href="https://t.me/JarvisPurple">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #06020f;
+            --bg-card: rgba(18, 10, 36, 0.65);
+            --purple: #a855f7;
+            --purple-light: #c084fc;
+            --purple-dark: #7c3aed;
+            --purple-glow: rgba(168, 85, 247, 0.35);
+            --text: #f0e6ff;
+            --text-dim: #9d8ab8;
+            --border: rgba(168, 85, 247, 0.12);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* === PARTICLE CANVAS === */
+        #particles {
+            position: fixed; inset: 0; z-index: 0;
+            pointer-events: none;
+        }
+
+        /* === CURSOR GLOW === */
+        .cursor-glow {
+            position: fixed; width: 500px; height: 500px;
+            border-radius: 50%; pointer-events: none; z-index: 0;
+            background: radial-gradient(circle, rgba(168,85,247,0.07), transparent 70%);
+            transform: translate(-50%, -50%);
+            transition: opacity 0.3s;
+        }
+
+        /* === GRID BG === */
+        .bg-grid {
+            position: fixed; inset: 0; z-index: 0;
+            background-image:
+                linear-gradient(rgba(168,85,247,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(168,85,247,0.025) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 30%, transparent 100%);
+        }
+
+        /* === SPOTLIGHT CONES === */
+        .spotlight {
+            position: fixed; top: 0; left: 0; right: 0;
+            height: 100vh; pointer-events: none; z-index: 0; overflow: hidden;
+        }
+        .spotlight-cone {
+            position: absolute; top: -60px; left: 50%; width: 500px; height: 120vh;
+            background: conic-gradient(from 0deg at 50% 0%, transparent 44%, rgba(168,85,247,0.06) 49%, rgba(168,85,247,0.1) 50%, rgba(168,85,247,0.06) 51%, transparent 56%);
+            transform-origin: 50% 0;
+            filter: blur(20px);
+        }
+        .spotlight-cone:nth-child(1) { transform: translateX(-50%) rotate(-15deg); animation: spotSway1 14s ease-in-out infinite; }
+        .spotlight-cone:nth-child(2) { transform: translateX(-50%) rotate(15deg); animation: spotSway2 18s ease-in-out infinite; }
+        .spotlight-cone:nth-child(3) { transform: translateX(-50%) rotate(0deg); animation: spotSway3 22s ease-in-out infinite reverse; }
+
+        @keyframes spotSway1 {
+            0%,100% { transform: translateX(-50%) rotate(-15deg) scale(1); }
+            50% { transform: translateX(-50%) rotate(-5deg) scale(1.1); }
+        }
+        @keyframes spotSway2 {
+            0%,100% { transform: translateX(-50%) rotate(15deg) scale(1); }
+            50% { transform: translateX(-50%) rotate(5deg) scale(1.15); }
+        }
+        @keyframes spotSway3 {
+            0%,100% { transform: translateX(-50%) rotate(0deg) scale(1); }
+            50% { transform: translateX(-50%) rotate(8deg) scale(1.05); }
+        }
+
+        .glow-orb {
+            position: fixed; border-radius: 50%; filter: blur(120px);
+            pointer-events: none; z-index: 0;
+        }
+        .glow-orb-1 {
+            width: 700px; height: 700px; top: -250px; right: -150px;
+            background: radial-gradient(circle, rgba(124,58,237,0.3), transparent 70%);
+            animation: float1 8s ease-in-out infinite;
+        }
+        .glow-orb-2 {
+            width: 500px; height: 500px; bottom: -150px; left: -100px;
+            background: radial-gradient(circle, rgba(168,85,247,0.15), transparent 70%);
+            animation: float2 10s ease-in-out infinite;
+        }
+
+        @keyframes float1 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-40px, 30px); }
+        }
+        @keyframes float2 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, -40px); }
+        }
+
+        /* === LAYOUT === */
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+        /* === NAV === */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            padding: 16px 0;
+            background: rgba(6, 2, 15, 0.75);
+            backdrop-filter: blur(24px);
+            border-bottom: 1px solid var(--border);
+        }
+        nav .container { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.2rem; text-decoration: none; color: var(--text); }
+        .logo-svg { flex-shrink: 0; }
+
+        .nav-links { display: flex; gap: 32px; list-style: none; }
+        .nav-links li { list-style: none; }
+        .nav-links a {
+            color: var(--text-dim); text-decoration: none; font-size: 0.9rem;
+            font-weight: 500; transition: color 0.3s;
+        }
+        .nav-links a:hover { color: var(--text); }
+        .nav-cta {
+            background: var(--purple); color: white; border: none; padding: 10px 24px;
+            border-radius: 100px; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+            transition: all 0.3s; text-decoration: none;
+            position: relative; overflow: hidden;
+        }
+        .nav-cta::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: translateX(-100%);
+            animation: btnShine 3s ease-in-out infinite;
+        }
+        @keyframes btnShine { 0%,70%,100% { transform: translateX(-100%); } 50% { transform: translateX(100%); } }
+        .nav-cta:hover { background: var(--purple-light); transform: translateY(-1px); box-shadow: 0 8px 30px var(--purple-glow); }
+
+        /* === HERO === */
+        .hero {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            text-align: center; padding-top: 80px; position: relative;
+        }
+        .hero-content { max-width: 800px; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.2);
+            border-radius: 100px; padding: 6px 6px 6px 8px; margin-bottom: 32px;
+            font-size: 0.85rem; color: var(--purple-light);
+            animation: fadeInUp 0.8s ease-out;
+        }
+        .badge-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+            animation: pulse-dot 2s infinite;
+        }
+        .badge-tag {
+            background: var(--purple-dark); color: white; padding: 4px 12px;
+            border-radius: 100px; font-size: 0.75rem; font-weight: 600;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px #22c55e; }
+            50% { opacity: 0.4; box-shadow: 0 0 16px #22c55e; }
+        }
+
+        /* HERO TITLE — shimmer gradient */
+        .hero h1 {
+            font-size: clamp(3rem, 7.5vw, 5.5rem); font-weight: 900;
+            line-height: 1.05; margin-bottom: 24px; letter-spacing: -0.04em;
+            background: linear-gradient(
+                90deg, #fff 0%, var(--purple-light) 25%, #fff 50%, var(--purple-light) 75%, #fff 100%
+            );
+            background-size: 200% 100%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: fadeInUp 0.8s ease-out 0.1s both, shimmer 4s ease-in-out infinite 1s;
+        }
+        @keyframes shimmer {
+            0%,100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* TYPING SUBTITLE */
+        .hero-subtitle {
+            font-size: 1.15rem; color: var(--text-dim); max-width: 560px;
+            margin: 0 auto 40px; line-height: 1.7; min-height: 3.4em;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+        .typing-cursor {
+            display: inline-block; width: 2px; height: 1.1em; background: var(--purple-light);
+            margin-left: 2px; vertical-align: text-bottom;
+            animation: blink 0.8s step-end infinite;
+        }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+        .hero-buttons {
+            display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+            animation: fadeInUp 0.8s ease-out 0.3s both;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--purple-dark), var(--purple));
+            color: white; padding: 16px 36px; border-radius: 100px;
+            font-weight: 600; font-size: 1.05rem; text-decoration: none;
+            transition: all 0.3s; border: none; cursor: pointer;
+            box-shadow: 0 4px 20px var(--purple-glow);
+            position: relative; overflow: hidden;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(168,85,247,0.45); }
+
+        .btn-secondary {
+            background: rgba(168,85,247,0.08); color: var(--purple-light);
+            padding: 16px 36px; border-radius: 100px; font-weight: 600;
+            font-size: 1.05rem; text-decoration: none; transition: all 0.3s;
+            border: 1px solid rgba(168,85,247,0.2);
+        }
+        .btn-secondary:hover { background: rgba(168,85,247,0.15); transform: translateY(-2px); }
+
+        /* ANIMATED COUNTERS */
+        .hero-stats {
+            display: flex; gap: 48px; justify-content: center; margin-top: 64px;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+        .stat { text-align: center; }
+        .stat-value {
+            font-size: 2.2rem; font-weight: 900;
+            background: linear-gradient(135deg, var(--purple-light), #e879f9);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-label { font-size: 0.85rem; color: var(--text-dim); margin-top: 4px; }
+
+        /* === SECTIONS === */
+        section { padding: 100px 0; }
+        .section-label {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: var(--purple-light); font-size: 0.85rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px;
+        }
+        .section-label::before {
+            content: ''; width: 24px; height: 2px;
+            background: var(--purple); border-radius: 2px;
+        }
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem); font-weight: 800;
+            letter-spacing: -0.02em; margin-bottom: 16px;
+        }
+        .section-desc { color: var(--text-dim); font-size: 1.1rem; max-width: 560px; margin-bottom: 56px; }
+
+        /* === FEATURES — 3D TILT + GLOW BORDER === */
+        .features-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
+        }
+        .feature-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 32px; transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            position: relative; overflow: hidden;
+        }
+        .feature-card:hover {
+            border-color: rgba(168,85,247,0.35); transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(168,85,247,0.1);
+        }
+        .feature-icon {
+            width: 52px; height: 52px; border-radius: 14px;
+            background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(168,85,247,0.1));
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 20px;
+            border: 1px solid rgba(168,85,247,0.15);
+        }
+        .feature-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; }
+        .feature-card p { color: var(--text-dim); font-size: 0.95rem; line-height: 1.6; }
+
+        /* === PRODUCTS — BORDER BEAM === */
+        .products-grid {
+            display: grid; grid-template-columns: 1fr 1.3fr 1fr;
+            gap: 20px; align-items: center;
+        }
+        .products-grid .product-card.featured {
+            padding: 48px 32px;
+        }
+        .products-grid .product-card.featured .product-icon {
+            width: 88px; height: 88px; border-radius: 22px;
+            margin-bottom: 24px;
+        }
+        .products-grid .product-card.featured .product-icon svg {
+            width: 48px; height: 48px;
+        }
+        .products-grid .product-card.featured h3 {
+            font-size: 1.5rem;
+        }
+        .products-grid .product-card.featured p {
+            font-size: 1rem;
+        }
+        .product-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 36px 28px; text-align: center;
+            transition: transform 0.2s ease-out, border-color 0.3s, box-shadow 0.3s;
+            backdrop-filter: blur(10px);
+            position: relative; overflow: hidden;
+        }
+        .product-card:hover {
+            border-color: rgba(168,85,247,0.35); transform: translateY(-6px);
+            box-shadow: 0 24px 60px rgba(168,85,247,0.12);
+        }
+        .product-icon {
+            display: flex; align-items: center; justify-content: center;
+            width: 72px; height: 72px; margin: 0 auto 20px;
+            border-radius: 18px;
+            background: rgba(168,85,247,0.08);
+            border: 1px solid rgba(168,85,247,0.15);
+        }
+        .product-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; }
+        .product-card p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+        .product-tag {
+            display: inline-block; margin-top: 16px; padding: 6px 16px;
+            background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.2);
+            border-radius: 100px; font-size: 0.8rem; color: var(--purple-light); font-weight: 500;
+        }
+
+        /* === CTA === */
+        .cta-section { text-align: center; padding: 120px 0; }
+        .cta-box {
+            background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(168,85,247,0.05));
+            border: 1px solid rgba(168,85,247,0.2);
+            border-radius: 32px; padding: 72px 40px;
+            position: relative; overflow: hidden;
+        }
+        .cta-box::before {
+            content: ''; position: absolute; bottom: -40%; left: 50%; transform: translateX(-50%);
+            width: 120%; height: 60%;
+            background: radial-gradient(ellipse, rgba(168,85,247,0.15), transparent 60%);
+            filter: blur(60px);
+            animation: ctaPulse 4s ease-in-out infinite;
+        }
+        @keyframes ctaPulse {
+            0%,100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+            50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+        }
+        .cta-box h2 {
+            font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 800;
+            margin-bottom: 16px; position: relative;
+        }
+        .cta-box p { color: var(--text-dim); font-size: 1.1rem; margin-bottom: 36px; position: relative; }
+        .cta-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; position: relative; }
+        .cta-buttons .btn-primary, .cta-buttons .btn-secondary { display: inline-flex; align-items: center; font-size: 1.05rem; padding: 16px 32px; }
+
+        /* === FOOTER === */
+        footer {
+            border-top: 1px solid var(--border); padding: 40px 0;
+            text-align: center; color: var(--text-dim); font-size: 0.85rem;
+        }
+        footer a { color: var(--purple-light); text-decoration: none; }
+
+        /* === FOCUS === */
+        :focus-visible { outline: 2px solid var(--purple-light); outline-offset: 2px; }
+        button:focus-visible, a:focus-visible { outline: 2px solid var(--purple-light); outline-offset: 2px; }
+
+        /* === REVIEWS ALL LINK === */
+        .reviews-all-link {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 24px; border-radius: 100px; font-size: 0.85rem;
+            text-decoration: none; color: var(--text);
+            border: 1px solid var(--border); background: var(--bg-card);
+            transition: border-color 0.3s, transform 0.3s;
+        }
+        .reviews-all-link:hover { border-color: rgba(168,85,247,0.4); transform: translateY(-2px); }
+        .reviews-all-link svg { color: var(--purple-light); }
+
+        /* === ANIMATIONS === */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(28px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .reveal {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+
+        /* Staggered reveal for children */
+        .features-grid .feature-card:nth-child(1) { transition-delay: 0s; }
+        .features-grid .feature-card:nth-child(2) { transition-delay: 0.1s; }
+        .features-grid .feature-card:nth-child(3) { transition-delay: 0.2s; }
+        .features-grid .feature-card:nth-child(4) { transition-delay: 0.3s; }
+        .features-grid .feature-card:nth-child(5) { transition-delay: 0.4s; }
+        .features-grid .feature-card:nth-child(6) { transition-delay: 0.5s; }
+
+        .products-grid .product-card:nth-child(1) { transition-delay: 0s; }
+        .products-grid .product-card:nth-child(2) { transition-delay: 0.1s; }
+        .products-grid .product-card:nth-child(3) { transition-delay: 0.2s; }
+
+        /* === LIVE DEMO === */
+        .demo-outer {
+            width: 1280px; max-width: 100%; margin: 0 auto;
+        }
+        .demo-window {
+            border-radius: 12px; overflow: hidden;
+            border: 1px solid rgba(168,85,247,0.2);
+            box-shadow: 0 20px 80px rgba(0,0,0,0.5), 0 0 40px rgba(168,85,247,0.08);
+            background: #0d0d1a;
+        }
+        .demo-titlebar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 16px; background: rgba(18,12,30,0.95);
+            border-bottom: 1px solid rgba(168,85,247,0.1);
+        }
+        .demo-dots {
+            display: flex; gap: 6px;
+        }
+        .demo-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+        }
+        .demo-dot:nth-child(1) { background: #ff5f57; }
+        .demo-dot:nth-child(2) { background: #febc2e; }
+        .demo-dot:nth-child(3) { background: #28c840; }
+        .demo-titlebar-text {
+            flex: 1; text-align: center; font-size: 0.75rem;
+            color: var(--text-dim); font-weight: 500;
+        }
+        .demo-frame {
+            width: 100%; height: 800px; border: none; display: block;
+            background: #06020f;
+        }
+        .demo-hint {
+            text-align: center; margin-top: 16px;
+            color: var(--text-dim); font-size: 0.85rem;
+        }
+        .dev-badge {
+            color: var(--purple-light); border-color: rgba(168,85,247,0.25);
+            animation: devPulse 2.5s ease-in-out infinite;
+            position: relative;
+        }
+        .dev-badge::before {
+            content: ''; position: absolute; inset: -1px; border-radius: inherit;
+            background: linear-gradient(90deg, transparent, rgba(168,85,247,0.15), transparent);
+            background-size: 200% 100%;
+            animation: devShine 3s linear infinite;
+            z-index: -1;
+        }
+        @keyframes devPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        @keyframes devShine {
+            to { background-position: 200% 0; }
+        }
+        .demo-hint span {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.15);
+            border-radius: 100px; padding: 6px 14px;
+        }
+
+
+        /* === HOW IT WORKS === */
+        .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; position: relative; max-width: 900px; margin: 0 auto; }
+        .step { text-align: center; padding: 40px 32px; position: relative; }
+        .step-num { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-weight: 800; font-size: 1.2rem; background: rgba(168,85,247,0.1); border: 2px solid rgba(168,85,247,0.3); color: var(--purple-light); position: relative; z-index: 1; }
+        .step h3 { font-size: 1.1rem; margin-bottom: 8px; }
+        .step p { color: var(--text-dim); font-size: 0.88rem; line-height: 1.6; }
+        .step-line-wrap { position: absolute; top: 68px; height: 2px; background: rgba(168,85,247,0.15); z-index: 0; }
+        .step-line-wrap.line-1 { left: calc(100% / 6 + 32px); width: calc(100% / 3 - 64px); }
+        .step-line-wrap.line-2 { left: calc(100% / 2 + 32px); width: calc(100% / 3 - 64px); }
+        .step-line-fill { height: 100%; width: 0; background: var(--purple); transition: width 1s ease; }
+
+        /* === TERMINAL === */
+        .terminal-section { padding: 80px 0; }
+        .terminal { max-width: 720px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid rgba(168,85,247,0.15); background: rgba(10,6,20,0.9); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+        .terminal-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: rgba(18,12,30,0.95); border-bottom: 1px solid rgba(168,85,247,0.1); }
+        .terminal-dots { display: flex; gap: 6px; }
+        .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .terminal-dot:nth-child(1) { background: #ff5f57; }
+        .terminal-dot:nth-child(2) { background: #febc2e; }
+        .terminal-dot:nth-child(3) { background: #28c840; }
+        .terminal-title { flex: 1; text-align: center; font-size: 0.75rem; color: var(--text-dim); }
+        .terminal-body { padding: 24px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85rem; line-height: 2; min-height: 220px; }
+        .terminal-line { opacity: 0; animation: termFadeIn 0.3s forwards; }
+        .terminal-line .prompt { color: var(--purple-light); }
+        .terminal-line .cmd { color: #e2e8f0; }
+        .terminal-line .result { color: #22c55e; }
+        .terminal-line .dim { color: var(--text-dim); }
+        @keyframes termFadeIn { to { opacity: 1; } }
+
+
+        /* === REVIEWS === */
+        .reviews-section { padding: 80px 0; overflow: hidden; }
+        .reviews-carousel { position: relative; max-width: 1200px; margin: 0 auto; overflow: hidden; padding: 8px 0; }
+        .reviews-track { display: flex; gap: 20px; will-change: transform; width: max-content; }
+        .reviews-track.carousel-mode { width: auto; transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1); cursor: grab; user-select: none; }
+        .reviews-track.carousel-mode.dragging { transition: none; cursor: grabbing; }
+        .reviews-track.dragging { transition: none; cursor: grabbing; }
+        .review-card { flex: 0 0 340px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; text-decoration: none; color: inherit; display: block; transition: border-color 0.3s; cursor: pointer; }
+        .review-card:hover { border-color: rgba(168,85,247,0.35); }
+        .review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .review-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(168,85,247,0.15); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--purple-light); font-size: 0.9rem; }
+        .review-name { font-weight: 600; font-size: 0.95rem; }
+        .review-stars { color: #f59e0b; font-size: 0.8rem; letter-spacing: 2px; }
+        .review-text { color: var(--text-dim); font-size: 0.88rem; line-height: 1.7; font-style: italic; }
+        .carousel-nav { display: flex; justify-content: center; gap: 8px; margin-top: 24px; }
+        .features-nav { display: none; }
+        .carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(168,85,247,0.2); border: none; cursor: pointer; padding: 0; transition: all 0.3s; }
+        .carousel-dot.active { background: var(--purple); width: 24px; border-radius: 4px; }
+
+        /* === FAQ === */
+        .faq-list { max-width: 100%; }
+        .faq-item {
+            border: 1px solid var(--border); border-radius: 14px;
+            margin-bottom: 12px; background: var(--bg-card);
+            transition: border-color 0.3s;
+        }
+        .faq-item:hover { border-color: rgba(168,85,247,0.25); }
+        .faq-item.open { border-color: rgba(168,85,247,0.3); }
+        .faq-question {
+            width: 100%; background: none; border: none; color: var(--text);
+            font-family: inherit; font-size: 1rem; font-weight: 600;
+            padding: 20px 24px; text-align: left; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center; gap: 16px;
+            transition: color 0.2s;
+        }
+        .faq-question:hover { color: var(--purple-light); }
+        .faq-arrow {
+            flex-shrink: 0; width: 18px; height: 18px; color: var(--text-dim);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
+        }
+        .faq-item.open .faq-arrow { transform: rotate(180deg); color: var(--purple-light); }
+        .faq-answer-wrap {
+            display: grid; grid-template-rows: 0fr;
+            transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .faq-item.open .faq-answer-wrap { grid-template-rows: 1fr; }
+        .faq-answer {
+            overflow: hidden;
+            color: var(--text-dim); font-size: 0.92rem; line-height: 1.7;
+        }
+        .faq-answer-inner { padding: 0 24px 20px; }
+
+        /* === MOBILE MENU === */
+        .menu-toggle {
+            display: none; background: none; border: none; cursor: pointer;
+            padding: 8px; color: var(--text);
+        }
+        .mobile-menu {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(6,2,15,0.95); backdrop-filter: blur(24px);
+            z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+        }
+        .mobile-menu.open { display: flex; }
+        .mobile-menu a {
+            color: var(--text); text-decoration: none; font-size: 1.3rem; font-weight: 600;
+            padding: 12px 0; transition: color 0.2s;
+        }
+        .mobile-menu a:hover { color: var(--purple-light); }
+        .mobile-menu-close {
+            position: absolute; top: 20px; right: 24px;
+            background: none; border: none; color: var(--text); cursor: pointer;
+        }
+
+        /* === MID CTA === */
+        .mid-cta {
+            text-align: center; padding: 56px 0;
+        }
+        .mid-cta-inner {
+            display: inline-flex; align-items: center; gap: 24px; flex-wrap: wrap; justify-content: center;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 100px; padding: 8px 8px 8px 32px;
+        }
+        .mid-cta-inner p { color: var(--text-dim); font-size: 0.95rem; margin: 0; }
+        .mid-cta-inner .btn-primary { padding: 12px 24px; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; }
+
+
+        /* === MOBILE === */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .nav-cta { display: none; }
+            .menu-toggle { display: block; }
+            .hero { min-height: auto; padding: 120px 0 60px; }
+            .hero h1 { font-size: 2.2rem; }
+            .hero-stats { gap: 24px; }
+            .stat-value { font-size: 1.5rem; }
+            .features-wrap { overflow: hidden; }
+            .features-grid {
+                display: flex !important; gap: 12px;
+                transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+                will-change: transform; cursor: grab; user-select: none;
+            }
+            .features-grid.dragging { transition: none; cursor: grabbing; }
+            .feature-card { flex: 0 0 calc(100% - 12px); padding: 20px; border-radius: 14px; min-width: 0; }
+            .feature-icon { width: 44px; height: 44px; border-radius: 12px; margin-bottom: 14px; }
+            .feature-icon svg { width: 20px; height: 20px; }
+            .feature-card h3 { font-size: 0.95rem; margin-bottom: 6px; }
+            .feature-card p { font-size: 0.82rem; line-height: 1.5; }
+            .features-nav { display: flex; }
+            .feature-card.reveal { opacity: 1; transform: none; transition: none; }
+            .products-grid { grid-template-columns: 1fr; gap: 12px; }
+            .product-card { padding: 24px 20px; border-radius: 14px; }
+            .products-grid .product-card.featured { padding: 28px 20px; }
+            .products-grid .product-card.featured .product-icon { width: 64px; height: 64px; margin-bottom: 16px; }
+            .products-grid .product-card.featured .product-icon svg { width: 36px; height: 36px; }
+            .products-grid .product-card.featured h3 { font-size: 1.2rem; }
+            .products-grid .product-card.featured p { font-size: 0.9rem; }
+            .product-icon { width: 56px; height: 56px; margin-bottom: 14px; border-radius: 14px; }
+            .product-icon svg { width: 28px; height: 28px; }
+            .product-card h3 { font-size: 1rem; margin-bottom: 6px; }
+            .product-card p { font-size: 0.85rem; }
+            .product-tag { margin-top: 12px; padding: 4px 12px; font-size: 0.75rem; }
+            #showcase { display: none; }
+            .cta-box { padding: 48px 24px; }
+            .cta-buttons { flex-direction: column; align-items: stretch; }
+            .cta-buttons .btn-primary, .cta-buttons .btn-secondary { justify-content: center; }
+            .steps-grid { grid-template-columns: 1fr; gap: 0; }
+            .step { padding: 16px 0; }
+            .step-num { width: 44px; height: 44px; font-size: 1rem; margin-bottom: 12px; }
+            .step h3 { font-size: 1rem; }
+            .step p { font-size: 0.82rem; }
+            .step-line-wrap { display: none; }
+            .review-card { flex: 0 0 calc(100% - 20px); }
+            .spotlight { display: none; }
+            .cursor-glow { display: none; }
+            section { padding: 64px 0; }
+            .section-title { font-size: 1.6rem; }
+            .section-desc { font-size: 0.95rem; margin-bottom: 36px; }
+            .terminal { margin: 0 -8px; border-radius: 8px; }
+            .terminal-body { padding: 16px; font-size: 0.75rem; }
+            .mid-cta-inner { flex-direction: column; border-radius: 20px; padding: 24px; gap: 16px; }
+            .faq-question { font-size: 0.92rem; padding: 18px 20px; }
+            .faq-answer-inner { padding: 0 20px 18px; font-size: 0.88rem; }
+        }
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 1.8rem; }
+            .hero-stats { flex-direction: column; gap: 16px; }
+            .products-grid { grid-template-columns: 1fr; }
+            .hero-buttons { flex-direction: column; align-items: stretch; }
+            .hero-buttons .btn-primary { text-align: center; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- BG LAYERS -->
+<canvas id="particles"></canvas>
+<div class="bg-grid"></div>
+<div class="spotlight">
+    <div class="spotlight-cone"></div>
+    <div class="spotlight-cone"></div>
+    <div class="spotlight-cone"></div>
+</div>
+<div class="glow-orb glow-orb-1"></div>
+<div class="glow-orb glow-orb-2"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<!-- NAV -->
+<nav>
+    <div class="container">
+        <a href="https://t.me/JarvisPurple" target="_blank" class="logo">
+            <svg class="logo-svg" width="38" height="38" viewBox="0 0 40 40" fill="none">
+                <path d="M5 8Q20 20 5 32" stroke="var(--purple-light)" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M12.5 5Q20 20 12.5 35" stroke="var(--purple-light)" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M20 3.5Q20 20 20 36.5" stroke="var(--purple-light)" stroke-width="3.2" stroke-linecap="round"/>
+                <path d="M27.5 5Q20 20 27.5 35" stroke="var(--purple-light)" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M35 8Q20 20 35 32" stroke="var(--purple-light)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            JarvisPurple
+        </a>
+        <ul class="nav-links">
+            <li><a href="#features">Возможности</a></li>
+            <li><a href="#how-it-works">Как это работает</a></li>
+            <li><a href="#showcase">Интерфейс</a></li>
+            <li><a href="#products">Продукты</a></li>
+            <li><a href="#reviews">Отзывы</a></li>
+            <li><a href="#join">Присоединиться</a></li>
+        </ul>
+        <a href="https://t.me/JarvisPurple" target="_blank" class="nav-cta">Следить за релизом</a>
+        <button class="menu-toggle" onclick="document.getElementById('mobileMenu').classList.add('open')" aria-label="Меню">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+    </div>
+</nav>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-menu-close" onclick="document.getElementById('mobileMenu').classList.remove('open')" aria-label="Закрыть">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <a href="#features" onclick="document.getElementById('mobileMenu').classList.remove('open')">Возможности</a>
+    <a href="#how-it-works" onclick="document.getElementById('mobileMenu').classList.remove('open')">Как это работает</a>
+    <a href="#reviews" onclick="document.getElementById('mobileMenu').classList.remove('open')">Отзывы</a>
+    <a href="#faq" onclick="document.getElementById('mobileMenu').classList.remove('open')">FAQ</a>
+    <a href="https://t.me/JarvisPurple" target="_blank" class="btn-primary" style="margin-top:16px;padding:14px 36px">Следить за релизом</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="badge">
+            <span class="badge-dot"></span>
+            Скоро релиз
+            <span class="badge-tag">Purify v2.0</span>
+        </div>
+        <h1>Твой ПК под<br>полным контролем</h1>
+        <p class="hero-subtitle" id="typingText"></p>
+        <div class="hero-buttons">
+            <a href="https://t.me/JarvisPurple" target="_blank" class="btn-primary" style="display:inline-flex;align-items:center;gap:10px">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.12.12 0 0 0-.07-.2c-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.55 3.67-.53.36-1 .54-1.42.53-.47-.01-1.37-.27-2.04-.49-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.44 3.8-1.58 4.59-1.86 5.1-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
+                Следить за разработкой
+            </a>
+        </div>
+        <div class="hero-stats">
+            <div class="stat">
+                <div class="stat-value" data-target="5000" data-suffix="+">0</div>
+                <div class="stat-label">Ждут релиз</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" data-target="7">0</div>
+                <div class="stat-label">Дней бесплатно</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" data-target="42" data-suffix="+">0</div>
+                <div class="stat-label">AI инструментов</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+    <div class="container">
+        <div class="reveal">
+            <div class="section-label">Возможности</div>
+            <h2 class="section-title">Всё, что нужно для<br>управления ПК</h2>
+            <p class="section-desc">Purify объединяет десятки функций в одном приложении — от удалённого управления до AI-автоматизации.</p>
+        </div>
+        <div class="features-wrap">
+        <div class="features-grid" id="features-track">
+            <div class="feature-card reveal">
+                <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.5V11h3a3 3 0 0 1 3 3v1a2 2 0 0 1-2 2h-1v3a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-3H6a2 2 0 0 1-2-2v-1a3 3 0 0 1 3-3h3V9.5A4 4 0 0 1 8 6a4 4 0 0 1 4-4z"/><circle cx="10" cy="16" r="1" fill="var(--purple-light)"/><circle cx="14" cy="16" r="1" fill="var(--purple-light)"/></svg></div>
+                <h3>AI Ассистент</h3>
+                <p>Встроенный AI с поддержкой 42+ инструментов. Задай вопрос или дай команду — Purify сделает всё сам.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8l-5 6"/><path d="M11 8h2v2"/></svg></div>
+                <h3>Telegram Управление</h3>
+                <p>Полный контроль ПК прямо из Telegram. Скриншоты, файлы, процессы, громкость — всё в чате.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg></div>
+                <h3>Голосовое Управление</h3>
+                <p>Push-to-talk и wake word. Скажи что нужно — Purify услышит, поймёт и выполнит. Полностью на русском.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                <h3>Удалённый Рабочий Стол</h3>
+                <p>Стриминг экрана через WebSocket с управлением мышью и клавиатурой. Полный доступ из браузера.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+                <h3>Мониторинг Системы</h3>
+                <p>Отслеживание CPU, RAM, диска и GPU в реальном времени. Алерты в Telegram при превышении порогов.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+                <h3>Автоматизация</h3>
+                <p>Планировщик задач, макросы, автозапуск программ, таймеры и напоминания. Настрой один раз — работает всегда.</p>
+            </div>
+        </div>
+        </div>
+        <div class="carousel-nav features-nav" id="features-nav"></div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+    <div class="container">
+        <div class="reveal">
+            <div class="section-label">Как это работает</div>
+            <h2 class="section-title">Три шага до полного контроля</h2>
+            <p class="section-desc">От команды до результата — меньше секунды.</p>
+        </div>
+        <div class="steps-grid reveal">
+            <div class="step-line-wrap line-1"><div class="step-line-fill"></div></div>
+            <div class="step-line-wrap line-2"><div class="step-line-fill"></div></div>
+            <div class="step">
+                <div class="step-num">1</div>
+                <h3>Скажи или напиши</h3>
+                <p>Голосом, через Telegram или локальный чат — Purify принимает команды из любого источника.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <h3>AI понимает</h3>
+                <p>AI анализирует запрос, выбирает нужное действие и подбирает параметры автоматически.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <h3>ПК выполняет</h3>
+                <p>Громкость, скриншот, запуск программы, поиск файла — всё происходит мгновенно.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- MID CTA -->
+<div class="mid-cta">
+    <div class="container">
+        <div class="mid-cta-inner">
+            <p>Purify скоро выходит — не пропусти</p>
+            <a href="https://t.me/JarvisPurple" target="_blank" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.12.12 0 0 0-.07-.2c-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.55 3.67-.53.36-1 .54-1.42.53-.47-.01-1.37-.27-2.04-.49-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.44 3.8-1.58 4.59-1.86 5.1-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
+                Подписаться
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- TERMINAL -->
+<section class="terminal-section">
+    <div class="container">
+        <div class="terminal reveal">
+            <div class="terminal-header">
+                <div class="terminal-dots">
+                    <div class="terminal-dot"></div>
+                    <div class="terminal-dot"></div>
+                    <div class="terminal-dot"></div>
+                </div>
+                <div class="terminal-title">Purify — Live Session</div>
+                <div style="width:44px"></div>
+            </div>
+            <div class="terminal-body" id="terminal-body"></div>
+        </div>
+    </div>
+</section>
+
+<!-- SHOWCASE CAROUSEL -->
+<section id="showcase">
+    <div class="container">
+        <div class="reveal">
+            <div class="section-label">Интерфейс</div>
+            <h2 class="section-title">Создан для удобства</h2>
+            <p class="section-desc">Тёмный минималистичный дизайн. Всё важное — на расстоянии одного клика.</p>
+        </div>
+        <div class="demo-hint reveal" style="margin-bottom:16px;margin-top:-40px;text-align:left"><span class="dev-badge">&#9888; Дизайн в разработке</span></div>
+        <div class="demo-outer reveal">
+            <div class="demo-window">
+                <div class="demo-titlebar">
+                    <div class="demo-dots">
+                        <div class="demo-dot"></div>
+                        <div class="demo-dot"></div>
+                        <div class="demo-dot"></div>
+                    </div>
+                    <div class="demo-titlebar-text">Purify — Live Demo</div>
+                    <div style="width: 44px;"></div>
+                </div>
+                <iframe class="demo-frame" src="../ui/web/index.html" title="Purify Demo" loading="lazy"></iframe>
+            </div>
+            <div class="demo-hint"><span>&#9757; Кликай, листай — это настоящий интерфейс</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- PRODUCTS -->
+<section id="products">
+    <div class="container">
+        <div class="reveal">
+            <div class="section-label">Экосистема</div>
+            <h2 class="section-title">Продукты Purple</h2>
+            <p class="section-desc">Набор инструментов, которые работают вместе для максимального контроля над вашим ПК.</p>
+        </div>
+        <div class="products-grid">
+            <div class="product-card reveal">
+                <span class="product-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#pi3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <defs><linearGradient id="pi3" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#c084fc"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs>
+                        <path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>
+                    </svg>
+                </span>
+                <h3>WOL Bot</h3>
+                <p>Включи компьютер удалённо через Telegram. Wake-on-LAN в одно нажатие.</p>
+                <span class="product-tag">Бесплатно</span>
+            </div>
+            <div class="product-card featured reveal">
+                <span class="product-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#pi1)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <defs><linearGradient id="pi1" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#c084fc"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs>
+                        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                        <path d="M7.5 10l2.5-3 2 2 4-4" stroke="url(#pi1)" stroke-width="1.5"/>
+                    </svg>
+                </span>
+                <h3>Purify</h3>
+                <p>Основной десктоп-ассистент. Управление ПК через Telegram, веб-интерфейс и голос.</p>
+                <span class="product-tag">Flagship</span>
+            </div>
+            <div class="product-card reveal">
+                <span class="product-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#pi4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <defs><linearGradient id="pi4" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#c084fc"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        <path d="M8 10h.01M12 10h.01M16 10h.01" stroke-width="2"/>
+                    </svg>
+                </span>
+                <h3>PurpleBot</h3>
+                <p>Официальный бот канала. Оплата, FAQ, статьи и поддержка пользователей.</p>
+                <span class="product-tag">Канал</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="reviews-section" id="reviews">
+    <div class="container">
+        <div class="reveal">
+            <div class="section-label">Отзывы</div>
+            <h2 class="section-title">Что говорят пользователи</h2>
+            <p class="section-desc">Отзывы пользователей первой версии Purify. Сейчас мы переписываем софт с нуля — станет ещё лучше.</p>
+        </div>
+    </div>
+    <div class="container">
+        <div class="reviews-carousel">
+            <div class="reviews-track" id="reviews-track">
+                <a class="review-card" href="https://t.me/jarvisreviews/163" target="_blank">
+                    <div class="review-header"><div class="review-avatar">Л</div><div><div class="review-name">Leonid</div><div class="review-stars">★★★★★</div></div></div>
+                    <p class="review-text">"Очень хорошая программа, помогает когда я играю если надо что-то сделать! Спасибо большое за Джарвиса."</p>
+                </a>
+                <a class="review-card" href="https://t.me/jarvisreviews/175" target="_blank">
+                    <div class="review-header"><div class="review-avatar">И</div><div><div class="review-name">Иван</div><div class="review-stars">★★★★★</div></div></div>
+                    <p class="review-text">"Ставлю 100/10. За такую программу и такая смешная цена — это просто кайф. Купил простой микрофон и хоть из другой комнаты говори, распознает всё на ура. Иногда чувствуешь себя Тони Старком."</p>
+                </a>
+                <a class="review-card" href="https://t.me/jarvisreviews/173" target="_blank">
+                    <div class="review-header"><div class="review-avatar">В</div><div><div class="review-name">Виктор</div><div class="review-stars">★★★★★</div></div></div>
+                    <p class="review-text">"Отлично оптимизированная программа с возможностью индивидуальной настройки под себя. Низкий поклон программисту за быструю помощь даже в самых тупых вопросах."</p>
+                </a>
+                <a class="review-card" href="https://t.me/jarvisreviews/169" target="_blank">
+                    <div class="review-header"><div class="review-avatar">Р</div><div><div class="review-name">Рустам</div><div class="review-stars">★★★★★</div></div></div>
+                    <p class="review-text">"Реально крутая и удобная вещь, которая радует каждый день. Привыкаешь так быстро, что начинаешь разговаривать с компом на работе и коллеги смотрят на тебя как на психа!"</p>
+                </a>
+                <a class="review-card" href="https://t.me/jarvisreviews/165" target="_blank">
+                    <div class="review-header"><div class="review-avatar">Я</div><div><div class="review-name">Яша</div><div class="review-stars">★★★★★</div></div></div>
+                    <p class="review-text">"Очень удобно, очень прикольно и очень невероятно. То что есть сейчас уже впечатляет. Мне всё нравится и всё устраивает. Спасибо за такую маст хев вещь."</p>
+                </a>
+                <a class="review-card" href="https://t.me/jarvisreviews/174" target="_blank">
+                    <div class="review-header"><div class="review-avatar">F</div><div><div class="review-name">FRUGA</div><div class="review-stars">★★★★★</div></div></div>
+                    <p class="review-text">"Программа просто лютая! После оплаты сразу всё в доступе, установка максимально лёгкая и быстрая. Можно удивить друзей которые сели к тебе за компьютер — всем советую."</p>
+                </a>
+                <a class="review-card" href="https://t.me/jarvisreviews/171" target="_blank">
+                    <div class="review-header"><div class="review-avatar">Д</div><div><div class="review-name">Данил</div><div class="review-stars">★★★★★</div></div></div>
+                    <p class="review-text">"Пользуюсь уже полторы недели и очень доволен. Я сам программист и мне это очень помогло с работой, да и в быту выручает. Надеюсь скоро это будет настоящий Джарвис как в кино!"</p>
+                </a>
+                <a class="review-card" href="https://t.me/jarvisreviews/167" target="_blank">
+                    <div class="review-header"><div class="review-avatar">Е</div><div><div class="review-name">Евгений</div><div class="review-stars">★★★★★</div></div></div>
+                    <p class="review-text">"Программа топ, 100% стоит своих средств."</p>
+                </a>
+            </div>
+        </div>
+        <div class="carousel-nav" id="reviews-nav"></div>
+        <div style="text-align:center;margin-top:24px">
+            <a href="https://t.me/jarvisreviews" target="_blank" class="reviews-all-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.12.12 0 0 0-.07-.2c-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.55 3.67-.53.36-1 .54-1.42.53-.47-.01-1.37-.27-2.04-.49-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.44 3.8-1.58 4.59-1.86 5.1-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
+                Читать все отзывы
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+    <div class="container">
+        <div class="reveal">
+            <div class="section-label">Вопросы</div>
+            <h2 class="section-title">Часто спрашивают</h2>
+            <p class="section-desc">Ответы на популярные вопросы о Purify.</p>
+        </div>
+        <div class="faq-list reveal">
+            <div class="faq-item">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    Почему v2.0? Что было раньше?
+                    <svg class="faq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="faq-answer-wrap"><div class="faq-answer"><div class="faq-answer-inner">Purify существует уже больше 3-х лет и продолжает работать. Все отзывы на сайте — от реальных пользователей текущей версии. Параллельно мы пишем v2.0 с нуля: новый стек, новый интерфейс, AI с tool use и голосовое управление. Всё лучшее из v1 останется, но уровень будет совсем другой.</div></div></div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    Purify — это бесплатно?
+                    <svg class="faq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="faq-answer-wrap"><div class="faq-answer"><div class="faq-answer-inner">При запуске каждый получит 7 дней бесплатного доступа ко всем функциям без ограничений. После — доступная подписка. Подпишись на канал, чтобы не пропустить.</div></div></div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    Какие системные требования?
+                    <svg class="faq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="faq-answer-wrap"><div class="faq-answer"><div class="faq-answer-inner">Windows 10 или новее. Для голосового управления рекомендуется видеокарта с CUDA, но всё работает и без неё.</div></div></div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    Мои данные в безопасности?
+                    <svg class="faq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="faq-answer-wrap"><div class="faq-answer"><div class="faq-answer-inner">AI работает локально на твоём ПК. Никакие команды, файлы или данные не отправляются на внешние серверы.</div></div></div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    Нужен ли интернет?
+                    <svg class="faq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="faq-answer-wrap"><div class="faq-answer"><div class="faq-answer-inner">Для управления через Telegram — да. Локальный чат, голосовые команды и автоматизация работают полностью офлайн.</div></div></div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    Как получить поддержку?
+                    <svg class="faq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="faq-answer-wrap"><div class="faq-answer"><div class="faq-answer-inner">Напиши разработчику напрямую в Telegram — <a href="https://t.me/prpleprog" target="_blank" style="color:var(--purple-light)">@prpleprog</a>. Обычно отвечаю в течение часа.</div></div></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="join">
+    <div class="container">
+        <div class="cta-box reveal">
+            <h2>Не пропусти релиз</h2>
+            <p>Подпишись на канал — следи за разработкой, получай гайды и первым попробуй Purify с 7 днями бесплатного доступа.</p>
+            <div class="cta-buttons">
+                <a href="https://t.me/JarvisPurple" target="_blank" class="btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right:8px"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.12.12 0 0 0-.07-.2c-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.55 3.67-.53.36-1 .54-1.42.53-.47-.01-1.37-.27-2.04-.49-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.44 3.8-1.58 4.59-1.86 5.1-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
+                    Подписаться на канал
+                </a>
+                <a href="https://t.me/prpleprog" target="_blank" class="btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Задать вопрос
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <div class="container">
+        <p>Purple &copy; 2024&ndash;2026 &middot; <a href="https://t.me/prpleprog" target="_blank">@prpleprog</a> &middot; <a href="https://t.me/JarvisPurple" target="_blank">@JarvisPurple</a></p>
+    </div>
+</footer>
+
+<script>
+// ==================== PARTICLE SYSTEM ====================
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let particles = [];
+const PARTICLE_COUNT = 60;
+const COLORS = ['#a855f7', '#c084fc', '#7c3aed', '#e879f9', '#d946ef'];
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+class Particle {
+    constructor() { this.reset(); }
+    reset() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * 0.3;
+        this.vy = (Math.random() - 0.5) * 0.3;
+        this.size = Math.random() * 2 + 0.5;
+        this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        this.alpha = Math.random() * 0.5 + 0.1;
+        this.pulseSpeed = Math.random() * 0.02 + 0.005;
+        this.pulsePhase = Math.random() * Math.PI * 2;
+    }
+    update(t) {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+        this.currentAlpha = this.alpha * (0.5 + 0.5 * Math.sin(t * this.pulseSpeed + this.pulsePhase));
+    }
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.currentAlpha;
+        ctx.fill();
+    }
+}
+
+for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
+
+function drawConnections() {
+    for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 150) {
+                ctx.beginPath();
+                ctx.moveTo(particles[i].x, particles[i].y);
+                ctx.lineTo(particles[j].x, particles[j].y);
+                ctx.strokeStyle = `rgba(168, 85, 247, ${0.06 * (1 - dist / 150)})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+        }
+    }
+}
+
+let tick = 0;
+function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    tick++;
+    ctx.globalAlpha = 1;
+    drawConnections();
+    particles.forEach(p => { p.update(tick); p.draw(); });
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// ==================== CURSOR GLOW ====================
+const cursorGlow = document.getElementById('cursorGlow');
+const glowOrb1 = document.querySelector('.glow-orb-1');
+const glowOrb2 = document.querySelector('.glow-orb-2');
+if (cursorGlow) {
+    document.addEventListener('mousemove', (e) => {
+        cursorGlow.style.left = e.clientX + 'px';
+        cursorGlow.style.top = e.clientY + 'px';
+        const x = (e.clientX / window.innerWidth - 0.5) * 20;
+        const y = (e.clientY / window.innerHeight - 0.5) * 20;
+        if (glowOrb1) glowOrb1.style.transform = `translate(${x}px, ${y}px)`;
+        if (glowOrb2) glowOrb2.style.transform = `translate(${-x}px, ${-y}px)`;
+    });
+}
+
+// Close mobile menu on Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const menu = document.getElementById('mobileMenu');
+        if (menu) menu.classList.remove('open');
+    }
+});
+
+
+// ==================== TYPING EFFECT ====================
+const phrases = [
+    'AI-ассистент для Windows. Скоро в релизе.',
+    'Управляй компьютером голосом и из Telegram.',
+    'Подпишись — будь первым, кто попробует.',
+    '7 дней бесплатного доступа при запуске.'
+];
+let phraseIdx = 0, charIdx = 0, isDeleting = false;
+const typingEl = document.getElementById('typingText');
+
+function type() {
+    if (!typingEl) return;
+    const current = phrases[phraseIdx];
+    if (!isDeleting) {
+        charIdx++;
+        typingEl.innerHTML = current.substring(0, charIdx) + '<span class="typing-cursor"></span>';
+        if (charIdx === current.length) {
+            setTimeout(() => { isDeleting = true; type(); }, 2000);
+            return;
+        }
+        setTimeout(type, 40 + Math.random() * 30);
+    } else {
+        charIdx--;
+        typingEl.innerHTML = current.substring(0, charIdx) + '<span class="typing-cursor"></span>';
+        if (charIdx === 0) {
+            isDeleting = false;
+            phraseIdx = (phraseIdx + 1) % phrases.length;
+            setTimeout(type, 400);
+            return;
+        }
+        setTimeout(type, 20);
+    }
+}
+setTimeout(type, 1200);
+
+// ==================== ANIMATED COUNTERS ====================
+const counters = document.querySelectorAll('.stat-value[data-target]');
+let countersStarted = false;
+
+function animateCounters() {
+    if (countersStarted) return;
+    countersStarted = true;
+    counters.forEach(el => {
+        const target = +el.dataset.target;
+        const suffix = el.dataset.suffix || '';
+        const duration = 2000;
+        const start = performance.now();
+        function step(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+            const val = Math.floor(eased * target);
+            el.textContent = val.toLocaleString('ru-RU') + suffix;
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    });
+}
+
+// ==================== SCROLL REVEAL ====================
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+        }
+    });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Trigger counters when stats are visible
+const statsObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) animateCounters();
+    });
+}, { threshold: 0.5 });
+document.querySelector('.hero-stats') && statsObserver.observe(document.querySelector('.hero-stats'));
+
+// ==================== TERMINAL ANIMATION ====================
+const termLines = [
+    { prompt: '❯ ', cmd: '"Пури, сделай погромче"', delay: 800 },
+    { result: '  ✓ Громкость: 55% → 72%', delay: 600 },
+    { prompt: '❯ ', cmd: 'скриншот', delay: 1200 },
+    { dim: '  ⚙ take_screenshot()', delay: 400 },
+    { result: '  ✓ Скриншот отправлен в Telegram (1.2 MB)', delay: 600 },
+    { prompt: '❯ ', cmd: '"открой VS Code"', delay: 1200 },
+    { dim: '  ⚙ open_app("VS Code")', delay: 400 },
+    { result: '  ✓ VS Code запущен', delay: 600 },
+    { prompt: '❯ ', cmd: '"какая погода?"', delay: 1200 },
+    { dim: '  ⚙ web_search("погода Москва")', delay: 400 },
+    { result: '  ✓ Москва: +4°C, облачно, ветер 3 м/с', delay: 800 },
+    { prompt: '❯ ', cmd: '█', delay: 0 },
+];
+
+let termStarted = false;
+function runTerminal() {
+    if (termStarted) return;
+    termStarted = true;
+    const body = document.getElementById('terminal-body');
+    if (!body) return;
+    let i = 0;
+    function addLine() {
+        if (i >= termLines.length) return;
+        const l = termLines[i];
+        const div = document.createElement('div');
+        div.className = 'terminal-line';
+        if (l.prompt) {
+            div.innerHTML = `<span class="prompt">${l.prompt}</span><span class="cmd">${l.cmd}</span>`;
+        } else if (l.result) {
+            div.innerHTML = `<span class="result">${l.result}</span>`;
+        } else if (l.dim) {
+            div.innerHTML = `<span class="dim">${l.dim}</span>`;
+        }
+        body.appendChild(div);
+        body.scrollTop = body.scrollHeight;
+        i++;
+        if (l.delay > 0) setTimeout(addLine, l.delay);
+    }
+    addLine();
+}
+
+const termObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) runTerminal(); });
+}, { threshold: 0.3 });
+const termEl = document.querySelector('.terminal');
+if (termEl) termObserver.observe(termEl);
+
+// ==================== CAROUSEL FACTORY ====================
+function initCarousel(trackId, navId, desktopPerPage) {
+    const track = document.getElementById(trackId);
+    const nav = document.getElementById(navId);
+    if (!track || !nav) return;
+    const cards = Array.from(track.children);
+    const total = cards.length;
+    let page = 0, perPage = desktopPerPage;
+    let startX = 0, currentX = 0, isDragging = false;
+
+    function getPerPage() { return window.innerWidth <= 768 ? 1 : desktopPerPage; }
+    function getPages() { return Math.ceil(total / perPage); }
+
+    function goTo(p) {
+        perPage = getPerPage();
+        const pages = getPages();
+        if (perPage >= total) {
+            // Desktop: show all, no carousel
+            track.style.transform = '';
+            nav.innerHTML = '';
+            return;
+        }
+        page = ((p % pages) + pages) % pages;
+        const cardW = cards[0].offsetWidth;
+        const gap = parseFloat(getComputedStyle(track).gap) || 0;
+        track.style.transform = `translateX(-${page * (cardW + gap)}px)`;
+        updateDots();
+    }
+
+    function updateDots() {
+        perPage = getPerPage();
+        const pages = getPages();
+        nav.innerHTML = '';
+        if (perPage >= total) return;
+        for (let i = 0; i < pages; i++) {
+            const dot = document.createElement('button');
+            dot.className = 'carousel-dot' + (i === page ? ' active' : '');
+            dot.onclick = () => goTo(i);
+            nav.appendChild(dot);
+        }
+    }
+
+    track.addEventListener('mousedown', e => { isDragging = true; startX = e.clientX; track.classList.add('dragging'); e.preventDefault(); });
+    track.addEventListener('touchstart', e => { isDragging = true; startX = e.touches[0].clientX; track.classList.add('dragging'); }, { passive: true });
+    window.addEventListener('mousemove', e => { if (isDragging) currentX = e.clientX - startX; });
+    window.addEventListener('touchmove', e => { if (isDragging) currentX = e.touches[0].clientX - startX; }, { passive: true });
+
+    function endDrag() {
+        if (!isDragging) return;
+        isDragging = false; track.classList.remove('dragging');
+        if (currentX < -40) goTo(page + 1);
+        else if (currentX > 40) goTo(page - 1);
+        currentX = 0;
+    }
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchend', endDrag);
+    track.addEventListener('click', e => { if (Math.abs(currentX) > 5) e.preventDefault(); }, true);
+
+    function init() { perPage = getPerPage(); goTo(page); }
+    init();
+    window.addEventListener('resize', init);
+}
+
+// ==================== FEATURES CAROUSEL (mobile) ====================
+initCarousel('features-track', 'features-nav', 6);
+
+// ==================== REVIEWS CAROUSEL ====================
+// Reviews: carousel on mobile, auto-scroll on desktop
+if (window.innerWidth <= 768) {
+    const rtm = document.getElementById('reviews-track');
+    if (rtm) rtm.classList.add('carousel-mode');
+    initCarousel('reviews-track', 'reviews-nav', 1);
+} else {
+    const rt = document.getElementById('reviews-track');
+    const rn = document.getElementById('reviews-nav');
+    if (rt) {
+        if (rn) rn.style.display = 'none';
+        const cards = Array.from(rt.children);
+        cards.forEach(c => rt.appendChild(c.cloneNode(true)));
+        let pos = 0, paused = false, lastTime = performance.now();
+        const speed = 50, gap = 20;
+        const setWidth = cards.reduce((s, c) => s + c.offsetWidth + gap, 0);
+        rt.addEventListener('mouseenter', () => paused = true);
+        rt.addEventListener('mouseleave', () => paused = false);
+        function scrollReviews(now) {
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+            if (!paused) {
+                pos -= speed * dt;
+                if (pos <= -setWidth) pos += setWidth;
+                rt.style.transform = `translateX(${pos}px)`;
+            }
+            requestAnimationFrame(scrollReviews);
+        }
+        requestAnimationFrame(scrollReviews);
+    }
+}
+
+// ==================== STEP LINE ANIMATION ====================
+const stepsObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            e.target.querySelectorAll('.step-line-fill').forEach((bar, i) => {
+                setTimeout(() => { bar.style.width = '100%'; }, 400 + i * 500);
+            });
+        }
+    });
+}, { threshold: 0.4 });
+const stepsGrid = document.querySelector('.steps-grid');
+if (stepsGrid) stepsObserver.observe(stepsGrid);
+</script>
+
+</body>
+</html>
