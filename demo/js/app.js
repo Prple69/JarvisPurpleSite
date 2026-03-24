@@ -31,6 +31,149 @@ function fmtNow() {
   return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
 }
 
+// ── Tool badge with feedback ──────────────────────────────────────
+const _TOOL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+// Tool name → Russian display name
+const _TOOL_NAMES_RU = {
+  set_volume: 'Громкость',
+  set_volume_relative: 'Громкость ±',
+  media_play: 'Воспроизвести',
+  media_pause: 'Пауза',
+  media_next: 'Следующий трек',
+  media_prev: 'Предыдущий трек',
+  mute_toggle: 'Без звука',
+  shutdown: 'Выключение',
+  restart: 'Перезагрузка',
+  sleep_pc: 'Спящий режим',
+  abort_shutdown: 'Отмена выключения',
+  shutdown_timer: 'Таймер выключения',
+  set_brightness: 'Яркость',
+  brightness_up: 'Яркость +',
+  brightness_down: 'Яркость −',
+  monitor_off: 'Выкл. монитор',
+  take_screenshot: 'Скриншот',
+  kill_process: 'Завершить процесс',
+  ocr_screen: 'Чтение экрана',
+  open_app: 'Открыть приложение',
+  open_url: 'Открыть сайт',
+  run_program: 'Запуск программы',
+  run_script: 'Запуск сценария',
+  web_search: 'Поиск в интернете',
+  find_and_open: 'Найти и открыть файл',
+  find_files: 'Поиск файлов',
+  minimize_all: 'Свернуть окна',
+  switch_to_window: 'Переключить окно',
+  close_window: 'Закрыть окно',
+  get_battery_info: 'Заряд батареи',
+  get_gpu_info: 'Видеокарта',
+  get_weather: 'Погода',
+  clean_temp: 'Очистка мусора',
+  flush_ram: 'Освобождение RAM',
+  run_command: 'Команда терминала',
+  get_clipboard: 'Буфер обмена',
+  set_clipboard: 'Копировать в буфер',
+  type_text: 'Ввод текста',
+  press_key: 'Нажатие клавиш',
+  speak_text: 'Озвучка',
+  set_timer: 'Таймер',
+  set_reminder: 'Напоминание',
+  cancel_timer: 'Отмена таймеров',
+};
+
+function _toolRu(name) { return _TOOL_NAMES_RU[name] || name; }
+
+const _FEEDBACK_CATEGORIES = [
+  { label: 'Открыть приложение', tool: 'open_app', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>' },
+  { label: 'Открыть сайт', tool: 'open_url', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
+  { label: 'Поиск в интернете', tool: 'web_search', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' },
+  { label: 'Громкость', tool: 'set_volume', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>' },
+  { label: 'Медиа (пауза/плей/трек)', tool: 'media_play', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>' },
+  { label: 'Переключить окно', tool: 'switch_to_window', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
+  { label: 'Закрыть окно', tool: 'close_window', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' },
+  { label: 'Свернуть окна', tool: 'minimize_all', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>' },
+  { label: 'Найти файл', tool: 'find_and_open', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' },
+  { label: 'Скриншот', tool: 'take_screenshot', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' },
+  { label: 'Не нужно было ничего', tool: '__none__', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>' },
+];
+
+function _buildToolBadge(toolName, userMessage) {
+  const id = 'fb_' + Math.random().toString(36).slice(2, 8);
+  const ruName = _toolRu(toolName);
+  // Store data in a global map — avoids quoting issues in inline handlers
+  if (!window._fbData) window._fbData = {};
+  window._fbData[id] = { tool: toolName, msg: userMessage };
+  return `<div class="msg-tool" id="${id}">
+    ${_TOOL_ICON} ${escHtml(ruName)}
+    <button class="msg-tool-feedback" data-fb-id="${id}" title="Неправильное действие?">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+    </button>
+  </div>`;
+}
+
+// Event delegation for feedback buttons — works regardless of quoting
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.msg-tool-feedback');
+  if (!btn) return;
+  e.stopPropagation();
+  const id = btn.dataset.fbId;
+  const data = window._fbData && window._fbData[id];
+  if (data) _openFeedback(id, data.tool, data.msg);
+});
+
+function _openFeedback(elId, wrongTool, userMsg) {
+  // Close any existing overlay
+  document.querySelectorAll('.feedback-overlay').forEach(d => d.remove());
+
+  const chatArea = document.getElementById('chat-messages');
+  if (!chatArea) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'feedback-overlay';
+
+  const items = _FEEDBACK_CATEGORIES
+    .filter(c => c.tool !== wrongTool)
+    .map(c => `<button class="feedback-dropdown-item" data-tool="${c.tool}">${c.icon} ${c.label}</button>`)
+    .join('');
+
+  overlay.innerHTML = `
+    <div class="feedback-panel">
+      <div class="feedback-panel-header">
+        <div class="feedback-panel-title">Какое действие правильное?</div>
+        <button class="feedback-panel-close" onclick="this.closest('.feedback-overlay').remove()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="feedback-panel-context">Вызвано: <span>${escHtml(_toolRu(wrongTool))}</span></div>
+      <div class="feedback-divider"></div>
+      ${items}
+    </div>
+  `;
+
+  chatArea.appendChild(overlay);
+
+  // Close on overlay background click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // Handle selection
+  overlay.querySelectorAll('.feedback-dropdown-item').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const correctTool = btn.dataset.tool;
+      const panel = overlay.querySelector('.feedback-panel');
+      panel.innerHTML = `<div class="feedback-sent">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Спасибо за помощь!
+        <div class="feedback-sent-sub">Это улучшит Purify для всех</div>
+      </div>`;
+      setTimeout(() => overlay.remove(), 1500);
+      try {
+        await API.submitAiFeedback(userMsg, wrongTool, correctTool, {});
+      } catch(e) { console.warn('[feedback]', e); }
+    });
+  });
+}
+
 // ── Toast ──────────────────────────────────────────────────────────
 function showToast(msg, type = 'info') {
   const c = document.getElementById('toast-container');
@@ -41,11 +184,11 @@ function showToast(msg, type = 'info') {
   t.className = `toast ${type}`;
   // Add dismiss button
   const txt = document.createElement('span');
-  txt.textContent = msg;
+  txt.innerHTML = msg;
   t.appendChild(txt);
   const btn = document.createElement('button');
   btn.className = 'toast-dismiss';
-  btn.textContent = '\u2715';
+  btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   btn.onclick = () => { t.classList.add('hiding'); setTimeout(() => t.remove(), 220); };
   t.appendChild(btn);
   c.appendChild(t);
@@ -124,14 +267,14 @@ function onboardingApp() {
         const res = await API.verifyToken(this.token);
         if (res.ok) {
           this.verifyOk = true;
-          this.verifyMsg = `✓ Бот найден: ${res.bot_name}`;
+          this.verifyMsg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Бот найден: ${res.bot_name}`;
         } else {
           this.verifyOk = false;
-          this.verifyMsg = '✗ ' + (res.error || 'Неверный токен');
+          this.verifyMsg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> ' + (res.error || 'Неверный токен');
         }
       } catch {
         this.verifyOk = false;
-        this.verifyMsg = '✗ Нет соединения';
+        this.verifyMsg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Нет соединения';
       } finally {
         this.verifying = false;
       }
@@ -222,23 +365,23 @@ function appRoot() {
       {
         title: 'Страницы',
         items: [
-          { icon: '▦', label: 'Дашборд', sub: 'Обзор системы', action: 'nav:dashboard' },
-          { icon: '◇', label: 'Чат', sub: 'AI ассистент', action: 'nav:chat' },
-          { icon: '◈', label: 'Telegram', sub: 'Управление ботом', action: 'nav:bot' },
-          { icon: '▣', label: 'Программы', sub: 'Быстрый запуск', action: 'nav:programs' },
-          { icon: '⚡', label: 'Сценарии', sub: 'Цепочки команд', action: 'nav:scripts' },
-          { icon: '◉', label: 'Голос', sub: 'Wake word и TTS', action: 'nav:voice' },
-          { icon: '🔧', label: 'Обслуживание', sub: 'Очистка, мониторинг, планировщик', action: 'nav:tools' },
-          { icon: '▤', label: 'Логи', sub: 'Системный журнал', action: 'nav:logs' },
-          { icon: '⚙', label: 'Настройки', sub: 'Конфигурация', action: 'nav:settings' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>', label: 'Дашборд', sub: 'Обзор системы', action: 'nav:dashboard' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', label: 'Чат', sub: 'AI ассистент', action: 'nav:chat' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>', label: 'Telegram', sub: 'Управление ботом', action: 'nav:bot' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 7h5M17 17h5"/></svg>', label: 'Программы', sub: 'Быстрый запуск', action: 'nav:programs' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>', label: 'Сценарии', sub: 'Цепочки команд', action: 'nav:scripts' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>', label: 'Голос', sub: 'Wake word и TTS', action: 'nav:voice' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', label: 'Обслуживание', sub: 'Очистка, мониторинг, планировщик', action: 'nav:tools' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>', label: 'Логи', sub: 'Системный журнал', action: 'nav:logs' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>', label: 'Настройки', sub: 'Конфигурация', action: 'nav:settings' },
         ]
       },
       {
         title: 'Быстрые действия',
         items: [
-          { icon: '◫', label: 'Скриншот', sub: 'Сделать скриншот экрана', action: 'screenshot' },
-          { icon: '↺', label: 'Перезапустить бота', sub: 'Остановить и запустить снова', action: 'restart-bot' },
-          { icon: '◌', label: 'Очистить логи', sub: 'Удалить все записи', action: 'clear-logs' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', label: 'Скриншот', sub: 'Сделать скриншот экрана', action: 'screenshot' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>', label: 'Перезапустить бота', sub: 'Остановить и запустить снова', action: 'restart-bot' },
+          { icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', label: 'Очистить логи', sub: 'Удалить все записи', action: 'clear-logs' },
         ]
       }
     ],
@@ -357,21 +500,21 @@ function appRoot() {
 // ── Dashboard Widget System ─────────────────────────────────────────
 
 const WIDGET_CATALOG = {
-  clock:    { label:'Часы',         icon:'◷',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
-  cpu:      { label:'Процессор',    icon:'⚙',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
-  ram:      { label:'Память',       icon:'▦',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
-  disk:     { label:'Диск C:',      icon:'◫',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
-  volume:   { label:'Громкость',    icon:'♪',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
-  media:    { label:'Медиаплеер',   icon:'♫',  minW:2, minH:1, maxW:4, maxH:3, defW:2, defH:2 },
-  weather:  { label:'Погода',       icon:'☁',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:2 },
-  currency: { label:'Курсы валют',  icon:'₽',  minW:2, minH:1, maxW:4, maxH:3, defW:2, defH:1 },
-  bot:      { label:'Telegram',     icon:'◎',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
-  voice:    { label:'Голос',        icon:'◉',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
-  gpu:      { label:'Видеокарта',  icon:'▣',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
-  battery:  { label:'Батарея',     icon:'▮',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
-  network:  { label:'Сеть',        icon:'↕',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
-  actions:  { label:'Быстрые действия', icon:'⚡', minW:2, minH:1, maxW:4, maxH:1, defW:2, defH:1 },
-  usage:    { label:'Статистика',  icon:'▤',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
+  clock:    { label:'Часы',         icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
+  cpu:      { label:'Процессор',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
+  ram:      { label:'Память',       icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="6" x2="6" y2="18"/><line x1="10" y1="6" x2="10" y2="18"/><line x1="14" y1="6" x2="14" y2="18"/><line x1="18" y1="6" x2="18" y2="18"/></svg>',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
+  disk:     { label:'Диск C:',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
+  volume:   { label:'Громкость',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
+  media:    { label:'Медиаплеер',   icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>',  minW:2, minH:1, maxW:4, maxH:3, defW:2, defH:2 },
+  weather:  { label:'Погода',       icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:2 },
+  currency: { label:'Курсы валют',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',  minW:2, minH:1, maxW:4, maxH:3, defW:2, defH:1 },
+  bot:      { label:'Telegram',     icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',  minW:1, minH:1, maxW:2, maxH:3, defW:1, defH:1 },
+  voice:    { label:'Голос',        icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
+  gpu:      { label:'Видеокарта',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
+  battery:  { label:'Батарея',     icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="18" height="12" rx="2"/><line x1="23" y1="13" x2="23" y2="11"/></svg>',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
+  network:  { label:'Сеть',        icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
+  actions:  { label:'Быстрые действия', icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>', minW:2, minH:1, maxW:4, maxH:1, defW:2, defH:1 },
+  usage:    { label:'Статистика',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',  minW:1, minH:1, maxW:2, maxH:2, defW:1, defH:1 },
 };
 
 // 4 cols × 3 rows = 12 cells, fits exactly without scroll
@@ -1254,8 +1397,8 @@ function chatPage() {
 
       let extras = '';
       if (meta.image) extras += `<div class="msg-image"><img src="${escHtml(meta.image)}" alt="изображение" onerror="this.parentElement.style.display='none'"></div>`;
-      if (meta.file)  extras += `<div class="msg-file">📎 ${escHtml(meta.file)}</div>`;
-      if (meta.tool_call) extras += `<div class="msg-tool">⚙ ${escHtml(meta.tool_call)}</div>`;
+      if (meta.file)  extras += `<div class="msg-file"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> ${escHtml(meta.file)}</div>`;
+      if (meta.tool_call) extras += _buildToolBadge(meta.tool_call, meta._userText || '');
 
       const nameClass = isUser ? '' : 'puri';
       group.innerHTML = `
@@ -1332,7 +1475,7 @@ function chatPage() {
         const group = document.createElement('div');
         group.className = 'message-group bot';
         let toolHtml = '';
-        if (resp.tool_call) toolHtml = `<div class="msg-tool">⚙ ${escHtml(resp.tool_call)}</div>`;
+        if (resp.tool_call) toolHtml = _buildToolBadge(resp.tool_call, text);
         group.innerHTML = `
           <div class="msg-avatar bot">P</div>
           <div class="msg-body">
@@ -1390,14 +1533,14 @@ function programsPage() {
       const path = document.getElementById('prog-path-input').value.trim();
       if (!name || !path) { showToast('Заполните все поля', 'error'); return; }
       await API.addProgram(name, path);
-      this.items.push({ name, path, icon: '📄' });
+      this.items.push({ name, path, icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' });
       closeModal('modal-add-program');
       showToast(`"${name}" добавлена`, 'success');
     },
 
     async run(name) {
       await API.runProgram(name);
-      showToast(`▶ ${name} запущен`, 'success');
+      showToast(`<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg> ${name} запущен`, 'success');
     },
 
     remove(name) {
@@ -1458,7 +1601,7 @@ function scriptsPage() {
 
     async run(name) {
       await API.runScript(name);
-      showToast(`▶ "${name}" запущен`, 'success');
+      showToast(`<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg> "${name}" запущен`, 'success');
     },
 
     remove(name) {
@@ -1480,7 +1623,7 @@ function addScriptStep(value = '') {
   item.innerHTML = `
     <div class="step-num">${n}</div>
     <input type="text" class="input" placeholder="Например: Открыть Chrome" value="${escHtml(value)}">
-    <button class="btn-remove-step" title="Удалить">✕</button>`;
+    <button class="btn-remove-step" title="Удалить"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
   item.querySelector('.btn-remove-step').addEventListener('click', () => item.remove());
   list.appendChild(item);
 }
@@ -1581,7 +1724,7 @@ function renderExclusions() {
     ? voiceExclusions.map((p, i) => `
         <div class="exclusion-item">
           <span>${escHtml(p)}</span>
-          <button onclick="voiceExclusions.splice(${i},1);renderExclusions()" title="Удалить">✕</button>
+          <button onclick="voiceExclusions.splice(${i},1);renderExclusions()" title="Удалить"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>`).join('')
     : '<div class="text-xs text-muted" style="padding:4px 8px">Список пуст</div>';
 }
@@ -1790,17 +1933,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settings = document.getElementById('page-settings');
   if (settings) observer.observe(settings, { attributes: true, attributeFilter: ['class'] });
 
-  document.getElementById('save-settings-btn')?.addEventListener('click', async () => {
-    const data = {
-      city:              getVal('settings-city'),
-      autostart:         getCheck('settings-autostart'),
-      analytics_enabled: getCheck('settings-analytics'),
-    };
-    await API.saveSettings(data).catch(() => {});
-    _settingsDirty = false;
-    showToast('Настройки сохранены', 'success');
-  });
-
   document.getElementById('export-config-btn')?.addEventListener('click', async () => {
     try {
       const r = await API.exportConfig();
@@ -1822,6 +1954,49 @@ document.addEventListener('DOMContentLoaded', async () => {
       fi.remove();
     };
   });
+
+  // ── Auto-save helpers (debounced) ──────────────────────────────────
+  let _autoSaveTimer = null;
+  function _debounce(fn, ms = 600) {
+    clearTimeout(_autoSaveTimer);
+    _autoSaveTimer = setTimeout(fn, ms);
+  }
+
+  window.autoSaveGeneral = () => _debounce(async () => {
+    const data = {
+      city:              getVal('settings-city'),
+      autostart:         getCheck('settings-autostart'),
+      analytics_enabled: getCheck('settings-analytics'),
+    };
+    await API.saveSettings(data).catch(() => {});
+  });
+
+  window.autoSaveBot = () => _debounce(async () => {
+    const token  = document.getElementById('bot-token-input')?.value.trim() || '';
+    const chatId = document.getElementById('bot-chatid-input')?.value.trim() || '';
+    const data = {
+      telegram_token: token,
+      chat_ids:       chatId ? [parseInt(chatId)] : [],
+      del_delay:      parseInt(getVal('settings-del-delay')) || 0,
+    };
+    await API.saveSettings(data).catch(() => {});
+  });
+
+  window.autoSaveAI = () => _debounce(async () => {
+    const provider = getVal('chat-ai-provider') || 'custom';
+    const data = {
+      ai_provider:         provider,
+      custom_api_url:      getVal('chat-custom-url'),
+      custom_api_key:      getVal('chat-custom-key'),
+      custom_api_model:    getVal('chat-custom-model'),
+      ollama_url:          getVal('chat-ollama-url'),
+      ollama_model:        getVal('chat-ollama-model'),
+      ollama_vision_model: getVal('chat-ollama-vision'),
+      ai_tool_use_enabled: getCheck('chat-tool-use'),
+      web_search_enabled:  getCheck('chat-web-search'),
+    };
+    await API.saveSettings(data).catch(() => {});
+  });
 });
 
 // Chat page AI provider segment control
@@ -1835,6 +2010,7 @@ function chatSetProvider(val) {
   const ollama = document.getElementById('chat-ollama-section');
   if (custom) custom.style.display = val === 'custom' ? '' : 'none';
   if (ollama) ollama.style.display = val === 'ollama' ? '' : 'none';
+  autoSaveAI();
 }
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('#chat-provider-seg .seg-btn').forEach(btn => {
@@ -1857,7 +2033,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!inp) return;
     const isPass = inp.type === 'password';
     inp.type = isPass ? 'text' : 'password';
-    document.getElementById('token-eye').textContent = isPass ? '🙈' : '👁';
+    document.getElementById('token-eye').innerHTML = isPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   });
 
   document.getElementById('verify-token-btn')?.addEventListener('click', async () => {
@@ -1868,11 +2044,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true; btn.textContent = '...';
     try {
       const r = await API.verifyToken(token);
-      if (r.ok) { res.className = 'ob-verify success'; res.textContent = `✓ ${r.bot_name}`; }
-      else       { res.className = 'ob-verify error';   res.textContent = '✗ ' + (r.error || 'Неверный токен'); }
+      if (r.ok) { res.className = 'ob-verify success'; res.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${r.bot_name}`; }
+      else       { res.className = 'ob-verify error';   res.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> ' + (r.error || 'Неверный токен'); }
       res.classList.remove('hidden');
     } catch {
-      res.className = 'ob-verify error'; res.textContent = '✗ Нет соединения'; res.classList.remove('hidden');
+      res.className = 'ob-verify error'; res.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Нет соединения'; res.classList.remove('hidden');
     } finally { btn.disabled = false; btn.textContent = 'Проверить'; }
   });
 
@@ -1889,48 +2065,6 @@ document.addEventListener('DOMContentLoaded', () => {
     else showToast('Ошибка: ' + (r.error || 'бот не запущен'), 'error');
   });
 
-  document.getElementById('save-bot-settings-btn')?.addEventListener('click', async () => {
-    const token  = document.getElementById('bot-token-input')?.value.trim() || '';
-    const chatId = document.getElementById('bot-chatid-input')?.value.trim() || '';
-    const data = {
-      telegram_token: token,
-      chat_ids:       chatId ? [parseInt(chatId)] : [],
-      del_delay:      parseInt(getVal('settings-del-delay')) || 0,
-    };
-    await API.saveSettings(data).catch(() => {});
-    showToast('Настройки Telegram сохранены', 'success');
-  });
-
-  // ── Chat AI settings handlers ────────────────────────────────────
-  document.getElementById('save-ai-settings-btn')?.addEventListener('click', async () => {
-    const provider = getVal('chat-ai-provider') || 'groq';
-    if (provider === 'ollama') {
-      const url = getVal('chat-ollama-url');
-      if (url && !url.match(/^https?:\/\/.+/)) {
-        showToast('Некорректный URL Ollama', 'error'); return;
-      }
-    }
-    if (provider === 'custom') {
-      const url = getVal('chat-custom-url');
-      if (!url || !url.match(/^https?:\/\/.+/)) {
-        showToast('Введите Base URL', 'error'); return;
-      }
-    }
-    const data = {
-      ai_provider:         provider,
-      custom_api_url:      getVal('chat-custom-url'),
-      custom_api_key:      getVal('chat-custom-key'),
-      custom_api_model:    getVal('chat-custom-model'),
-      ollama_url:          getVal('chat-ollama-url'),
-      ollama_model:        getVal('chat-ollama-model'),
-      ollama_vision_model: getVal('chat-ollama-vision'),
-      ai_tool_use_enabled: getCheck('chat-tool-use'),
-      web_search_enabled:  getCheck('chat-web-search'),
-    };
-    await API.saveSettings(data).catch(() => {});
-    showToast('Настройки ИИ сохранены', 'success');
-    closeModal('modal-ai-settings');
-  });
 });
 
 // ── Favorites Grid ─────────────────────────────────────────────────
